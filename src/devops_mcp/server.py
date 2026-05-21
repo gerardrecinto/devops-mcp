@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP(
     "devops-mcp",
     description=(
-        "Live DevOps assistant. Query Kubernetes pods/logs/events, "
-        "Jenkins and GitHub Actions build status, and AWS CloudWatch in plain English."
+        "Live DevOps assistant. Query Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, "
+        "ServiceNow, Slack, and Microsoft Teams in plain English."
     ),
 )
 
@@ -44,14 +44,19 @@ def _audit(tool: str, params: dict[str, Any]) -> None:
 def main() -> None:
     _init_audit()
 
-    from devops_mcp.tools import aws, github_actions, jenkins, kubernetes
+    from devops_mcp.tools import aws, azure, gcp, github_actions, jenkins, kubernetes, servicenow, slack, teams
 
     kubernetes.register(mcp, _audit)
     jenkins.register(mcp, _audit)
     github_actions.register(mcp, _audit)
     aws.register(mcp, _audit)
+    azure.register(mcp, _audit)
+    gcp.register(mcp, _audit)
+    servicenow.register(mcp, _audit)
+    slack.register(mcp, _audit)
+    teams.register(mcp, _audit)
 
-    logger.info("devops-mcp started — %d tools registered", 4 * 3)
+    logger.info("devops-mcp started, 9 tool modules registered")
     mcp.run()
 
 
