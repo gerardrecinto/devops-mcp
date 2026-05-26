@@ -1,6 +1,6 @@
-![demo](docs/assets/demo.gif)
-
 # devops-mcp
+
+![DevOps MCP logo](docs/assets/logo.svg)
 
 > Ask Claude "Why is production down?" and get a real answer from your live systems.
 
@@ -12,6 +12,8 @@ Built this after watching on-call engineers spend 25 minutes hunting across six 
 ![MCP](https://img.shields.io/badge/MCP-Compatible-green)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 ![Tests](https://img.shields.io/badge/Tests-28%20passed-brightgreen)
+
+![demo](docs/assets/demo.gif)
 
 ---
 
@@ -199,6 +201,8 @@ Infrastructure tools are **read-only**. Claude can observe and explain, not modi
 
 Credentials are environment variables only. Each service is independently optional.
 Every tool call is appended to `~/.devops-mcp/audit.log`.
+
+For the commercial path, launch angles, and first-customer profile, see [docs/go-to-market.md](docs/go-to-market.md).
 
 ---
 

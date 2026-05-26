@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="260" viewBox="0 0 960 260" role="img" aria-labelledby="title desc">
+  <title id="title">DevOps MCP logo</title>
+  <desc id="desc">Natural-language access to DevOps systems through MCP.</desc>
+  <rect width="960" height="260" rx="28" fill="#0b1020"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="132" cy="130" r="48"/>
+    <path d="M180 130h90M270 82v96M270 82h92M270 178h92"/>
+    <circle cx="390" cy="82" r="24"/>
+    <circle cx="390" cy="178" r="24"/>
+    <path d="M112 120l20 20 38-48"/>
+  </g>
+  <text x="470" y="118" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="800">DevOps MCP</text>
+  <text x="473" y="160" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="22">Ask live systems what is broken and why</text>
+</svg>
