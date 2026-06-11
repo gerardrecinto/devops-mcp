@@ -1,5 +1,12 @@
 # devops-mcp
 
+![CI](https://github.com/gerardrecinto/devops-mcp/actions/workflows/ci.yml/badge.svg)
+![Release](https://github.com/gerardrecinto/devops-mcp/actions/workflows/release.yml/badge.svg)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
+![MCP](https://img.shields.io/badge/MCP-Compatible-green)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
+![Tests](https://img.shields.io/badge/Tests-28%20passed-brightgreen)
+
 ![DevOps MCP logo](docs/assets/logo.svg)
 
 > Ask Claude "Why is production down?" and get a real answer from your live systems.
@@ -7,11 +14,6 @@
 MCP server that connects Claude to your DevOps stack. Query Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack, and Microsoft Teams in plain English — without switching tabs or terminals.
 
 Built this after watching on-call engineers spend 25 minutes hunting across six dashboards to understand a single incident. It cut our MTTR from 30 minutes to 5 minutes.
-
-![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
-![MCP](https://img.shields.io/badge/MCP-Compatible-green)
-![License](https://img.shields.io/badge/License-MIT-lightgrey)
-![Tests](https://img.shields.io/badge/Tests-28%20passed-brightgreen)
 
 ![demo](docs/assets/demo.gif)
 
@@ -149,6 +151,12 @@ pip install -e ".[gcp]"
 pip install -e ".[slack]"
 ```
 
+### Docker
+
+```bash
+docker pull ghcr.io/gerardrecinto/devops-mcp:latest
+```
+
 ```bash
 cp .env.example .env
 # Fill in credentials. Any service without credentials is skipped.
@@ -178,10 +186,18 @@ Add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_conf
 Restart Claude Desktop. The devops-mcp tools appear in the toolbar.
 
 ```bash
-# Docker
+# Docker Compose
 cp .env.example .env
 docker-compose up -d
 ```
+
+---
+
+## Resilient module loading
+
+Each tool module (Kubernetes, Jenkins, AWS, etc.) loads independently. If a module fails to import — missing credentials, optional dependency not installed — the server logs the error and continues. Every other module still registers its tools normally. Version is logged at startup so it shows in server logs.
+
+This means partial deployments work: install only the extras you need, skip the rest, and the server starts clean every time.
 
 ---
 
