@@ -17,6 +17,10 @@ Built this after watching on-call engineers spend 25 minutes hunting across six 
 
 ![demo](docs/assets/demo.gif)
 
+## Business impact
+
+LLMs have no visibility into the systems engineers actually use. devops-mcp connects Claude to 7 enterprise systems (Jira, GitHub, Jenkins, AWS, Kubernetes, Grafana, Confluence) in a single MCP server. Deployed internally at Qualcomm to support a globally distributed org. Every hour saved per engineer per week across a 100-person platform team equals ~$1M/year recovered at $200K loaded cost.
+
 ---
 
 ## What it looks like in practice
