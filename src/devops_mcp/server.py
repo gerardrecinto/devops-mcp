@@ -46,17 +46,23 @@ def main() -> None:
 
     from devops_mcp.tools import aws, azure, gcp, github_actions, jenkins, kubernetes, servicenow, slack, teams
 
-    kubernetes.register(mcp, _audit)
-    jenkins.register(mcp, _audit)
-    github_actions.register(mcp, _audit)
-    aws.register(mcp, _audit)
-    azure.register(mcp, _audit)
-    gcp.register(mcp, _audit)
-    servicenow.register(mcp, _audit)
-    slack.register(mcp, _audit)
-    teams.register(mcp, _audit)
+    modules = [kubernetes, jenkins, github_actions, aws, azure, gcp, servicenow, slack, teams]
+    registered: list[str] = []
+    for mod in modules:
+        name = mod.__name__.split(".")[-1]
+        try:
+            mod.register(mcp, _audit)
+            registered.append(name)
+        except Exception as exc:
+            logger.warning("tool module %s failed to load: %s", name, exc)
 
-    logger.info("devops-mcp started, 9 tool modules registered")
+    try:
+        from importlib.metadata import version as _pkg_version
+        _version = _pkg_version("devops-mcp")
+    except Exception:
+        _version = "dev"
+
+    logger.info("devops-mcp v%s started — registered: %s", _version, ", ".join(registered))
     mcp.run()
 
 
