@@ -5,7 +5,7 @@ services:
     build: .
     restart: unless-stopped
     environment:
-      - KUBECONFIG=/root/.kube/config
+      - KUBECONFIG=/home/devops-mcp/.kube/config
       - JENKINS_URL=${JENKINS_URL}
       - JENKINS_USER=${JENKINS_USER}
       - JENKINS_TOKEN=${JENKINS_TOKEN}
@@ -14,7 +14,7 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     volumes:
-      - ${HOME}/.kube:/root/.kube:ro
-      - ${HOME}/.devops-mcp:/root/.devops-mcp
+      - ${HOME}/.kube:/home/devops-mcp/.kube:ro
+      - ${HOME}/.devops-mcp:/home/devops-mcp/.devops-mcp
     stdin_open: true
     tty: true
