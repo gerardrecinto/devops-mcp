@@ -1,4 +1,5 @@
 """MCP server entry point for devops-mcp."""
+
 from __future__ import annotations
 
 import json
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 mcp = FastMCP(
     "devops-mcp",
-    description=(
+    instructions=(
         "Live DevOps assistant. Query Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, "
         "ServiceNow, Slack, and Microsoft Teams in plain English."
     ),
@@ -36,7 +37,11 @@ def _init_audit() -> None:
 def _audit(tool: str, params: dict[str, Any]) -> None:
     if _audit_path is None:
         return
-    entry = {"ts": datetime.now(timezone.utc).isoformat(), "tool": tool, "params": params}
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "tool": tool,
+        "params": params,
+    }
     with open(_audit_path, "a") as f:
         f.write(json.dumps(entry) + "\n")
 
@@ -44,9 +49,29 @@ def _audit(tool: str, params: dict[str, Any]) -> None:
 def main() -> None:
     _init_audit()
 
-    from devops_mcp.tools import aws, azure, gcp, github_actions, jenkins, kubernetes, servicenow, slack, teams
+    from devops_mcp.tools import (
+        aws,
+        azure,
+        gcp,
+        github_actions,
+        jenkins,
+        kubernetes,
+        servicenow,
+        slack,
+        teams,
+    )
 
-    modules = [kubernetes, jenkins, github_actions, aws, azure, gcp, servicenow, slack, teams]
+    modules = [
+        kubernetes,
+        jenkins,
+        github_actions,
+        aws,
+        azure,
+        gcp,
+        servicenow,
+        slack,
+        teams,
+    ]
     registered: list[str] = []
     for mod in modules:
         name = mod.__name__.split(".")[-1]
@@ -58,11 +83,14 @@ def main() -> None:
 
     try:
         from importlib.metadata import version as _pkg_version
+
         _version = _pkg_version("devops-mcp")
     except Exception:
         _version = "dev"
 
-    logger.info("devops-mcp v%s started — registered: %s", _version, ", ".join(registered))
+    logger.info(
+        "devops-mcp v%s started — registered: %s", _version, ", ".join(registered)
+    )
     mcp.run()
 
 
