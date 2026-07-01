@@ -7,10 +7,28 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Lint (ruff)
+        run: ruff check src/ tests/
+      - name: Format check (black)
+        run: black --check src/ tests/
+      - name: Test
+        run: pytest tests/ -v --cov=devops_mcp --cov-report=term-missing
+
+  audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +37,5 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: pip install -e ".[dev]"
-      - name: Lint
-        run: python -m py_compile $(find src -name "*.py")
-      - name: Test
-        run: pytest tests/ -v --tb=short
+      - name: Dependency vulnerability scan
+        run: pip-audit --skip-editable
