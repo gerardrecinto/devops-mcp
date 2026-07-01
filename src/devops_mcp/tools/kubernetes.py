@@ -1,7 +1,26 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 from typing import Any, Callable
+
+_SERVICE_ACCOUNT_TOKEN = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
+
+
+def _kube_configured() -> bool:
+    """Whether we have any plausible way to reach a cluster.
+
+    Mirrors the credential-presence check the other tool modules use
+    (jenkins, slack, teams, servicenow) instead of only guarding on
+    ImportError, since the kubernetes client is a hard dependency and is
+    always importable.
+    """
+    if os.getenv("KUBECONFIG"):
+        return True
+    if _SERVICE_ACCOUNT_TOKEN.exists():
+        return True
+    return (Path.home() / ".kube" / "config").exists()
 
 
 def _demo_failing_pods() -> list[dict[str, Any]]:
@@ -76,7 +95,11 @@ def _demo_deployment_status() -> dict[str, Any]:
         "unavailable": 2,
         "image": "myapp/api-server:v1.4.2",
         "conditions": [
-            {"type": "Available", "status": "False", "reason": "MinimumReplicasUnavailable"}
+            {
+                "type": "Available",
+                "status": "False",
+                "reason": "MinimumReplicasUnavailable",
+            }
         ],
     }
 
@@ -103,6 +126,8 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         def k8s_get_failing_pods(namespace: str = "default") -> str:
             """List pods not in Running/Succeeded state."""
             audit("k8s_get_failing_pods", {"namespace": namespace})
+            if not _kube_configured():
+                return json.dumps(_demo_failing_pods(), indent=2)
             v1 = _core()
             pods = v1.list_namespaced_pod(namespace=namespace)
             failing = [
@@ -120,9 +145,20 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             return json.dumps(failing, indent=2)
 
         @mcp.tool()
-        def k8s_pod_logs(pod_name: str, namespace: str = "default", tail_lines: int = 100) -> str:
+        def k8s_pod_logs(
+            pod_name: str, namespace: str = "default", tail_lines: int = 100
+        ) -> str:
             """Fetch recent logs from a pod."""
-            audit("k8s_pod_logs", {"pod_name": pod_name, "namespace": namespace, "tail_lines": tail_lines})
+            audit(
+                "k8s_pod_logs",
+                {
+                    "pod_name": pod_name,
+                    "namespace": namespace,
+                    "tail_lines": tail_lines,
+                },
+            )
+            if not _kube_configured():
+                return _demo_pod_logs()
             v1 = _core()
             return v1.read_namespaced_pod_log(
                 name=pod_name, namespace=namespace, tail_lines=tail_lines
@@ -132,6 +168,8 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         def k8s_describe_pod(pod_name: str, namespace: str = "default") -> str:
             """Describe a pod: status, containers, recent events."""
             audit("k8s_describe_pod", {"pod_name": pod_name, "namespace": namespace})
+            if not _kube_configured():
+                return json.dumps(_demo_describe_pod(), indent=2)
             v1 = _core()
             pod = v1.read_namespaced_pod(name=pod_name, namespace=namespace)
             result = {
@@ -154,7 +192,12 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         @mcp.tool()
         def k8s_get_events(namespace: str = "default", field_selector: str = "") -> str:
             """List cluster events, optionally filtered by field selector."""
-            audit("k8s_get_events", {"namespace": namespace, "field_selector": field_selector})
+            audit(
+                "k8s_get_events",
+                {"namespace": namespace, "field_selector": field_selector},
+            )
+            if not _kube_configured():
+                return json.dumps(_demo_events(), indent=2)
             v1 = _core()
             kwargs = {"namespace": namespace}
             if field_selector:
@@ -173,9 +216,16 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             return json.dumps(result, indent=2)
 
         @mcp.tool()
-        def k8s_get_deployment_status(deployment_name: str, namespace: str = "default") -> str:
+        def k8s_get_deployment_status(
+            deployment_name: str, namespace: str = "default"
+        ) -> str:
             """Get rollout status of a deployment."""
-            audit("k8s_get_deployment_status", {"deployment_name": deployment_name, "namespace": namespace})
+            audit(
+                "k8s_get_deployment_status",
+                {"deployment_name": deployment_name, "namespace": namespace},
+            )
+            if not _kube_configured():
+                return json.dumps(_demo_deployment_status(), indent=2)
             v1 = _apps()
             d = v1.read_namespaced_deployment(name=deployment_name, namespace=namespace)
             result = {
@@ -185,7 +235,11 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
                 "ready": d.status.ready_replicas or 0,
                 "available": d.status.available_replicas or 0,
                 "unavailable": d.status.unavailable_replicas or 0,
-                "image": d.spec.template.spec.containers[0].image if d.spec.template.spec.containers else None,
+                "image": (
+                    d.spec.template.spec.containers[0].image
+                    if d.spec.template.spec.containers
+                    else None
+                ),
                 "conditions": [
                     {"type": c.type, "status": c.status, "reason": c.reason}
                     for c in (d.status.conditions or [])
@@ -204,7 +258,14 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         @mcp.tool()
         def k8s_pod_logs(pod_name: str, namespace: str = "default", tail_lines: int = 100) -> str:  # type: ignore[misc]
             """Fetch recent logs from a pod. (demo mode)"""
-            audit("k8s_pod_logs", {"pod_name": pod_name, "namespace": namespace, "tail_lines": tail_lines})
+            audit(
+                "k8s_pod_logs",
+                {
+                    "pod_name": pod_name,
+                    "namespace": namespace,
+                    "tail_lines": tail_lines,
+                },
+            )
             return _demo_pod_logs()
 
         @mcp.tool()
@@ -216,11 +277,17 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         @mcp.tool()
         def k8s_get_events(namespace: str = "default", field_selector: str = "") -> str:  # type: ignore[misc]
             """List cluster events. (demo mode)"""
-            audit("k8s_get_events", {"namespace": namespace, "field_selector": field_selector})
+            audit(
+                "k8s_get_events",
+                {"namespace": namespace, "field_selector": field_selector},
+            )
             return json.dumps(_demo_events(), indent=2)
 
         @mcp.tool()
         def k8s_get_deployment_status(deployment_name: str, namespace: str = "default") -> str:  # type: ignore[misc]
             """Get rollout status of a deployment. (demo mode)"""
-            audit("k8s_get_deployment_status", {"deployment_name": deployment_name, "namespace": namespace})
+            audit(
+                "k8s_get_deployment_status",
+                {"deployment_name": deployment_name, "namespace": namespace},
+            )
             return json.dumps(_demo_deployment_status(), indent=2)
