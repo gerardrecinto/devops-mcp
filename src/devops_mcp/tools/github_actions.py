@@ -13,7 +13,10 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
 
         def _headers() -> dict[str, str]:
             token = os.getenv("GITHUB_TOKEN", "")
-            h = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+            h = {
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            }
             if token:
                 h["Authorization"] = f"Bearer {token}"
             return h
@@ -21,7 +24,9 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         @mcp.tool()
         def gh_get_workflow_run(owner: str, repo: str, run_id: int) -> str:
             """Get details of a specific GitHub Actions workflow run."""
-            audit("gh_get_workflow_run", {"owner": owner, "repo": repo, "run_id": run_id})
+            audit(
+                "gh_get_workflow_run", {"owner": owner, "repo": repo, "run_id": run_id}
+            )
             resp = requests.get(
                 f"{_GH_API}/repos/{owner}/{repo}/actions/runs/{run_id}",
                 headers=_headers(),
@@ -44,9 +49,14 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
-        def gh_list_failed_runs(owner: str, repo: str, workflow_id: str = "", limit: int = 10) -> str:
+        def gh_list_failed_runs(
+            owner: str, repo: str, workflow_id: str = "", limit: int = 10
+        ) -> str:
             """List recent failed workflow runs for a repository."""
-            audit("gh_list_failed_runs", {"owner": owner, "repo": repo, "workflow_id": workflow_id})
+            audit(
+                "gh_list_failed_runs",
+                {"owner": owner, "repo": repo, "workflow_id": workflow_id},
+            )
             base = (
                 f"{_GH_API}/repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs"
                 if workflow_id
@@ -80,7 +90,9 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         @mcp.tool()
         def gh_get_workflow_run(owner: str, repo: str, run_id: int) -> str:  # type: ignore[misc]
             """Get GitHub Actions workflow run details. (demo mode — requests not installed)"""
-            audit("gh_get_workflow_run", {"owner": owner, "repo": repo, "run_id": run_id})
+            audit(
+                "gh_get_workflow_run", {"owner": owner, "repo": repo, "run_id": run_id}
+            )
             return json.dumps(
                 {
                     "id": run_id,
@@ -98,7 +110,10 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         @mcp.tool()
         def gh_list_failed_runs(owner: str, repo: str, workflow_id: str = "", limit: int = 10) -> str:  # type: ignore[misc]
             """List failed GitHub Actions runs. (demo mode)"""
-            audit("gh_list_failed_runs", {"owner": owner, "repo": repo, "workflow_id": workflow_id})
+            audit(
+                "gh_list_failed_runs",
+                {"owner": owner, "repo": repo, "workflow_id": workflow_id},
+            )
             return json.dumps(
                 [
                     {

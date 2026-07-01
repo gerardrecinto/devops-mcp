@@ -25,7 +25,10 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             Get status of a Jenkins build.
             build_number=0 fetches the last completed build.
             """
-            audit("jenkins_get_build_status", {"job_name": job_name, "build_number": build_number})
+            audit(
+                "jenkins_get_build_status",
+                {"job_name": job_name, "build_number": build_number},
+            )
             url, auth = _client()
             if url is None:
                 return json.dumps(_demo_build_status(job_name, build_number))
@@ -50,9 +53,14 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
-        def jenkins_get_build_log(job_name: str, build_number: int = 0, tail_lines: int = 50) -> str:
+        def jenkins_get_build_log(
+            job_name: str, build_number: int = 0, tail_lines: int = 50
+        ) -> str:
             """Fetch console log for a Jenkins build."""
-            audit("jenkins_get_build_log", {"job_name": job_name, "build_number": build_number})
+            audit(
+                "jenkins_get_build_log",
+                {"job_name": job_name, "build_number": build_number},
+            )
             url, auth = _client()
             if url is None:
                 return _demo_build_log(job_name)
@@ -92,13 +100,19 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         @mcp.tool()
         def jenkins_get_build_status(job_name: str, build_number: int = 0) -> str:  # type: ignore[misc]
             """Get Jenkins build status. (demo mode — requests not installed)"""
-            audit("jenkins_get_build_status", {"job_name": job_name, "build_number": build_number})
+            audit(
+                "jenkins_get_build_status",
+                {"job_name": job_name, "build_number": build_number},
+            )
             return json.dumps(_demo_build_status(job_name, build_number), indent=2)
 
         @mcp.tool()
         def jenkins_get_build_log(job_name: str, build_number: int = 0, tail_lines: int = 50) -> str:  # type: ignore[misc]
             """Fetch Jenkins console log. (demo mode)"""
-            audit("jenkins_get_build_log", {"job_name": job_name, "build_number": build_number})
+            audit(
+                "jenkins_get_build_log",
+                {"job_name": job_name, "build_number": build_number},
+            )
             return _demo_build_log(job_name)
 
         @mcp.tool()
@@ -121,19 +135,25 @@ def _demo_build_status(job_name: str, build_number: int) -> dict[str, Any]:
 
 def _demo_build_log(job_name: str) -> str:
     return (
-        f"[Pipeline] Start of Pipeline\n"
-        f"[Pipeline] stage (Build)\n"
-        f"[backend-deploy] Running shell script\n"
-        f"+ docker build -t myapp/backend:latest .\n"
-        f"Step 1/8 : FROM python:3.12-slim\n"
-        f"ERROR: failed to solve: python:3.12-slim: not found\n"
-        f"[Pipeline] End of Pipeline\n"
-        f"Finished: FAILURE\n"
+        "[Pipeline] Start of Pipeline\n"
+        "[Pipeline] stage (Build)\n"
+        "[backend-deploy] Running shell script\n"
+        "+ docker build -t myapp/backend:latest .\n"
+        "Step 1/8 : FROM python:3.12-slim\n"
+        "ERROR: failed to solve: python:3.12-slim: not found\n"
+        "[Pipeline] End of Pipeline\n"
+        "Finished: FAILURE\n"
     )
 
 
 def _demo_failing_jobs() -> list[dict[str, Any]]:
     return [
-        {"name": "backend-deploy", "url": "http://jenkins.example.com/job/backend-deploy/"},
-        {"name": "integration-tests", "url": "http://jenkins.example.com/job/integration-tests/"},
+        {
+            "name": "backend-deploy",
+            "url": "http://jenkins.example.com/job/backend-deploy/",
+        },
+        {
+            "name": "integration-tests",
+            "url": "http://jenkins.example.com/job/integration-tests/",
+        },
     ]

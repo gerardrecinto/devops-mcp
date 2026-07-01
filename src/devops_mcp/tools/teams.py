@@ -10,12 +10,16 @@ import requests as _requests
 
 def _get_graph_token(tenant_id: str, client_id: str, client_secret: str) -> str:
     url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-    resp = _requests.post(url, data={
-        "grant_type": "client_credentials",
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "scope": "https://graph.microsoft.com/.default",
-    }, timeout=15)
+    resp = _requests.post(
+        url,
+        data={
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "scope": "https://graph.microsoft.com/.default",
+        },
+        timeout=15,
+    )
     resp.raise_for_status()
     return resp.json()["access_token"]
 
@@ -47,12 +51,33 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             hours: int = 1,
         ) -> str:
             """Fetch recent messages from a Teams channel. (demo mode)"""
-            audit("teams_get_channel_messages", {"team_id": team_id, "channel_id": channel_id})
-            return json.dumps([
-                {"id": "1705305480000", "from": "Jane Smith", "created": "2024-01-15T09:08:00Z", "body": "prod api is throwing 502s, is anyone looking at this?"},
-                {"id": "1705305540000", "from": "oncall-bot", "created": "2024-01-15T09:09:00Z", "body": "[ALERT] api-gateway error rate 18% (threshold: 1%)"},
-                {"id": "1705305600000", "from": "Gerard Recinto", "created": "2024-01-15T09:10:00Z", "body": "on it, checking K8s events now"},
-            ], indent=2)
+            audit(
+                "teams_get_channel_messages",
+                {"team_id": team_id, "channel_id": channel_id},
+            )
+            return json.dumps(
+                [
+                    {
+                        "id": "1705305480000",
+                        "from": "Jane Smith",
+                        "created": "2024-01-15T09:08:00Z",
+                        "body": "prod api is throwing 502s, is anyone looking at this?",
+                    },
+                    {
+                        "id": "1705305540000",
+                        "from": "oncall-bot",
+                        "created": "2024-01-15T09:09:00Z",
+                        "body": "[ALERT] api-gateway error rate 18% (threshold: 1%)",
+                    },
+                    {
+                        "id": "1705305600000",
+                        "from": "Gerard Recinto",
+                        "created": "2024-01-15T09:10:00Z",
+                        "body": "on it, checking K8s events now",
+                    },
+                ],
+                indent=2,
+            )
 
         @mcp.tool()
         def teams_list_channels(  # type: ignore[misc]
@@ -60,11 +85,26 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         ) -> str:
             """List channels in a Microsoft Teams team. (demo mode)"""
             audit("teams_list_channels", {"team_id": team_id})
-            return json.dumps([
-                {"id": "19:abc123@thread.tacv2", "name": "General", "description": ""},
-                {"id": "19:def456@thread.tacv2", "name": "incidents", "description": "Production incident coordination"},
-                {"id": "19:ghi789@thread.tacv2", "name": "platform-alerts", "description": "Automated alerts from CI/CD and monitoring"},
-            ], indent=2)
+            return json.dumps(
+                [
+                    {
+                        "id": "19:abc123@thread.tacv2",
+                        "name": "General",
+                        "description": "",
+                    },
+                    {
+                        "id": "19:def456@thread.tacv2",
+                        "name": "incidents",
+                        "description": "Production incident coordination",
+                    },
+                    {
+                        "id": "19:ghi789@thread.tacv2",
+                        "name": "platform-alerts",
+                        "description": "Automated alerts from CI/CD and monitoring",
+                    },
+                ],
+                indent=2,
+            )
 
         return
 
@@ -81,7 +121,9 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         audit("teams_post_message", {"title": title})
         url = webhook_url or default_webhook
         if not url:
-            return json.dumps({"error": "No webhook URL provided and TEAMS_WEBHOOK_URL is not set."})
+            return json.dumps(
+                {"error": "No webhook URL provided and TEAMS_WEBHOOK_URL is not set."}
+            )
         payload = {
             "@type": "MessageCard",
             "@context": "http://schema.org/extensions",
@@ -100,7 +142,9 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         hours: int = 1,
     ) -> str:
         """Fetch recent messages from a Microsoft Teams channel via Graph API."""
-        audit("teams_get_channel_messages", {"team_id": team_id, "channel_id": channel_id})
+        audit(
+            "teams_get_channel_messages", {"team_id": team_id, "channel_id": channel_id}
+        )
         token = _get_graph_token(tenant_id, client_id, client_secret)
         headers = {"Authorization": f"Bearer {token}"}
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
@@ -115,7 +159,8 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
                 "body": m.get("body", {}).get("content", ""),
             }
             for m in resp.json().get("value", [])
-            if m.get("messageType") == "message" and m.get("createdDateTime", "") >= cutoff
+            if m.get("messageType") == "message"
+            and m.get("createdDateTime", "") >= cutoff
         ]
         return json.dumps(messages, indent=2)
 
@@ -125,9 +170,18 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         audit("teams_list_channels", {"team_id": team_id})
         token = _get_graph_token(tenant_id, client_id, client_secret)
         headers = {"Authorization": f"Bearer {token}"}
-        resp = _requests.get(f"{graph_base}/teams/{team_id}/channels", headers=headers, timeout=15)
+        resp = _requests.get(
+            f"{graph_base}/teams/{team_id}/channels", headers=headers, timeout=15
+        )
         resp.raise_for_status()
-        return json.dumps([
-            {"id": c["id"], "name": c["displayName"], "description": c.get("description", "")}
-            for c in resp.json().get("value", [])
-        ], indent=2)
+        return json.dumps(
+            [
+                {
+                    "id": c["id"],
+                    "name": c["displayName"],
+                    "description": c.get("description", ""),
+                }
+                for c in resp.json().get("value", [])
+            ],
+            indent=2,
+        )

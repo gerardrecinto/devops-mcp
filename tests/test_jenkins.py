@@ -1,6 +1,5 @@
 import json
 import sys
-import pytest
 
 
 class _FakeMCP:
@@ -11,12 +10,14 @@ class _FakeMCP:
         def decorator(fn):
             self.tools[fn.__name__] = fn
             return fn
+
         return decorator
 
 
 def _fresh_jenkins():
     sys.modules.pop("devops_mcp.tools.jenkins", None)
     import importlib
+
     return importlib.import_module("devops_mcp.tools.jenkins")
 
 
@@ -30,7 +31,9 @@ def test_get_build_status_demo_returns_failure(no_audit, monkeypatch):
     mcp = _FakeMCP()
     jenkins.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["jenkins_get_build_status"](job_name="backend-deploy"))
+    result = json.loads(
+        mcp.tools["jenkins_get_build_status"](job_name="backend-deploy")
+    )
     assert result["result"] == "FAILURE"
     assert result["duration_s"] > 0
 

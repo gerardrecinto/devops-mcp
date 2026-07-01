@@ -1,6 +1,5 @@
 import json
 import sys
-import pytest
 
 
 class _FakeMCP:
@@ -11,12 +10,14 @@ class _FakeMCP:
         def decorator(fn):
             self.tools[fn.__name__] = fn
             return fn
+
         return decorator
 
 
 def _fresh_snow():
     sys.modules.pop("devops_mcp.tools.servicenow", None)
     import importlib
+
     return importlib.import_module("devops_mcp.tools.servicenow")
 
 
