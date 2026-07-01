@@ -1,7 +1,4 @@
 import json
-from unittest.mock import patch
-
-import pytest
 
 
 def test_module_imports_and_constructs_fastmcp():
