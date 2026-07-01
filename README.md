@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-Compatible-green)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
-![Tests](https://img.shields.io/badge/Tests-28%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-42%20passed-brightgreen)
 
 ![DevOps MCP logo](docs/assets/logo.svg)
 
@@ -231,7 +231,6 @@ For the commercial path, launch angles, and first-customer profile, see [docs/go
 ```bash
 pip install -e ".[dev]"
 pytest tests/ -v --cov=devops_mcp
-# 28 passed  coverage: 91%
 ```
 
 ---
