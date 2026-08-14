@@ -11,9 +11,9 @@
 
 > Ask Claude "Why is production down?" and get a real answer from your live systems.
 
-MCP server that connects Claude to your DevOps stack. Query Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack, and Microsoft Teams in plain English — without switching tabs or terminals.
+MCP server that connects Claude to your DevOps stack. Query Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack, and Microsoft Teams in plain English, without switching tabs or terminals.
 
-Built this after watching on-call engineers spend 25 minutes hunting across six dashboards to understand a single incident. It cut our MTTR from 30 minutes to 5 minutes.
+Built this after watching on-call engineers spend 25 minutes hunting across six dashboards to understand a single incident.
 
 ![demo](docs/assets/demo.gif)
 
@@ -199,7 +199,7 @@ docker-compose up -d
 
 ## Resilient module loading
 
-Each tool module (Kubernetes, Jenkins, AWS, etc.) loads independently. If a module fails to import — missing credentials, optional dependency not installed — the server logs the error and continues. Every other module still registers its tools normally. Version is logged at startup so it shows in server logs.
+Each tool module (Kubernetes, Jenkins, AWS, etc.) loads independently. If a module fails to import (missing credentials, optional dependency not installed), the server logs the error and continues. Every other module still registers its tools normally. Version is logged at startup so it shows in server logs.
 
 This means partial deployments work: install only the extras you need, skip the rest, and the server starts clean every time.
 
