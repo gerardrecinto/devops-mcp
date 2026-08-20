@@ -52,7 +52,7 @@ Claude:
 
 ## Architecture
 
-> Open `diagrams/architecture.drawio` in [diagrams.net](https://diagrams.net) for the full diagram.
+> See [docs/architecture.md](docs/architecture.md) for the full protocol flow, tool registration, and audit logging diagrams.
 
 ```
 +-----------------------------------------------------------------------+
