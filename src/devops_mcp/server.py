@@ -9,7 +9,13 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
+
+try:
+    # mcp SDK 2.x renamed FastMCP -> MCPServer and moved the module.
+    from mcp.server.mcpserver import MCPServer as FastMCP
+except ImportError:
+    # mcp SDK 1.x
+    from mcp.server.fastmcp import FastMCP
 
 load_dotenv()
 
