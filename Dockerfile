@@ -1,4 +1,4 @@
-FROM python:3.12.13-slim@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf AS builder
+FROM python:3.14.0-slim@sha256:0aecac02dc3d4c5dbb024b753af084cafe41f5416e02193f1ce345d671ec966e AS builder
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ COPY src/ src/
 
 RUN pip install --no-cache-dir --prefix=/install .
 
-FROM python:3.12.13-slim@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf
+FROM python:3.14.0-slim@sha256:0aecac02dc3d4c5dbb024b753af084cafe41f5416e02193f1ce345d671ec966e
 
 RUN groupadd --gid 1000 devops-mcp \
     && useradd --uid 1000 --gid devops-mcp --create-home --shell /usr/sbin/nologin devops-mcp
