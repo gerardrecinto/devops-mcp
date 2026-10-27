@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 
 def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
@@ -25,7 +26,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         def slack_get_channel_history(channel: str, hours: int = 1) -> str:
             """Fetch recent messages from a Slack channel."""
             audit("slack_get_channel_history", {"channel": channel, "hours": hours})
-            oldest = (datetime.now(timezone.utc) - timedelta(hours=hours)).timestamp()
+            oldest = (datetime.now(UTC) - timedelta(hours=hours)).timestamp()
             resp = client.conversations_history(
                 channel=channel, oldest=str(oldest), limit=50
             )

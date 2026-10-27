@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +44,7 @@ def _audit(tool: str, params: dict[str, Any]) -> None:
     if _audit_path is None:
         return
     entry = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
         "tool": tool,
         "params": params,
     }
@@ -84,14 +84,16 @@ def main() -> None:
         try:
             mod.register(mcp, _audit)
             registered.append(name)
-        except Exception as exc:
+        # One broken tool module must not stop the others.
+        except Exception as exc:  # noqa: BLE001
             logger.warning("tool module %s failed to load: %s", name, exc)
 
     try:
+        from importlib.metadata import PackageNotFoundError
         from importlib.metadata import version as _pkg_version
 
         _version = _pkg_version("devops-mcp")
-    except Exception:
+    except PackageNotFoundError:
         _version = "dev"
 
     logger.info(

@@ -5,13 +5,13 @@ def test_module_imports_and_constructs_fastmcp():
     """Regression test: FastMCP's constructor signature changed across mcp
     SDK versions (description -> instructions). This import alone would
     have caught that break before it reached a container build."""
-    import devops_mcp.server as server
+    from devops_mcp import server
 
     assert server.mcp is not None
 
 
 def test_main_registers_all_tool_modules(tmp_path, monkeypatch):
-    import devops_mcp.server as server
+    from devops_mcp import server
 
     monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
     monkeypatch.setattr(server.mcp, "run", lambda: None)
@@ -23,7 +23,7 @@ def test_main_registers_all_tool_modules(tmp_path, monkeypatch):
 
 
 def test_audit_writes_json_line(tmp_path, monkeypatch):
-    import devops_mcp.server as server
+    from devops_mcp import server
 
     monkeypatch.setattr(server, "_audit_path", tmp_path / "audit.log")
     server._audit("k8s_get_failing_pods", {"namespace": "production"})
@@ -37,7 +37,7 @@ def test_audit_writes_json_line(tmp_path, monkeypatch):
 
 
 def test_audit_noop_before_init(monkeypatch):
-    import devops_mcp.server as server
+    from devops_mcp import server
 
     monkeypatch.setattr(server, "_audit_path", None)
     server._audit("noop", {})
