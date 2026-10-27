@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import requests as _requests
 
@@ -147,7 +148,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         )
         token = _get_graph_token(tenant_id, client_id, client_secret)
         headers = {"Authorization": f"Bearer {token}"}
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
         url = f"{graph_base}/teams/{team_id}/channels/{channel_id}/messages"
         resp = _requests.get(url, headers=headers, params={"$top": 50}, timeout=15)
         resp.raise_for_status()

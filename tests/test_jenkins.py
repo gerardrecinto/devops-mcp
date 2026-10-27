@@ -62,3 +62,11 @@ def test_list_failing_jobs_demo(no_audit, monkeypatch):
     for job in result:
         assert "name" in job
         assert "url" in job
+
+
+def test_job_path_handles_folders_and_quoting():
+    from devops_mcp.tools.jenkins import _job_path
+
+    assert _job_path("build") == "/job/build"
+    assert _job_path("team/app deploy") == "/job/team/job/app%20deploy"
+    assert _job_path("/team/app/") == "/job/team/job/app"
