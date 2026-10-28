@@ -184,7 +184,7 @@ claude mcp add devops-mcp -- devops-mcp
 Azure, GCP and Slack need extras:
 
 ```bash
-pipx install "devops-mcp[azure,gcp,slack] @ git+https://github.com/gerardrecinto/devops-mcp.git"
+pipx install "mcp-devops[azure,gcp,slack] @ git+https://github.com/gerardrecinto/devops-mcp.git"
 ```
 
 ### Docker
