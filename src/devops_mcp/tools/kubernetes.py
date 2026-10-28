@@ -107,6 +107,17 @@ def _demo_deployment_status() -> dict[str, Any]:
     }
 
 
+def _event_time(event: Any) -> str | None:
+    """Most recent time the event fired, as ISO-8601, or None if unknown."""
+    meta = getattr(event, "metadata", None)
+    ts = (
+        getattr(event, "last_timestamp", None)
+        or getattr(event, "event_time", None)
+        or getattr(meta, "creation_timestamp", None)
+    )
+    return ts.isoformat() if ts else None
+
+
 def _pod_problem(pod: Any) -> dict[str, Any] | None:
     """Describe why a pod is unhealthy, or None if it is fine.
 
@@ -241,6 +252,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
                     "object": f"{e.involved_object.kind}/{e.involved_object.name}",
                     "message": e.message,
                     "count": e.count,
+                    "last_seen": _event_time(e),
                 }
                 for e in events.items
             ]

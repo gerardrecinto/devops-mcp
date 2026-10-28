@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-Compatible-green)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
-![Tests](https://img.shields.io/badge/Tests-56%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-65%20passed-brightgreen)
 
 ![DevOps MCP logo](docs/assets/logo.svg)
 
@@ -25,6 +25,7 @@ Chat assistants cannot see the systems on-call engineers actually use, so incide
 
 A first draft of "wrap the Kubernetes API in an MCP tool" is easy. The parts that make it safe to run against production are not, and each one is tested here:
 
+- **One timeline instead of six dashboards.** `incident_timeline` merges changes, CI failures, cluster warnings and incidents into one ordered view and names the changes that landed shortly before things broke. That cross-system join is the part a single-service wrapper does not give you.
 - **It never invents data.** An unconfigured service returns a plain "not configured" error. Sample data is opt-in (`DEVOPS_MCP_DEMO=1`) and every response is labelled, so an assistant cannot report a made-up OOMKill or a Slack message that was never sent.
 - **It finds the failures that matter.** A crash-looping pod reports phase `Running`; the reason sits on the container state. The pod check reads container waiting and terminated reasons, so CrashLoopBackOff and ImagePullBackOff are caught, not just `Pending`.
 - **Read-only by design.** No tool applies, deletes, restarts or triggers anything. The only writes are Slack and Teams messages.
@@ -91,6 +92,13 @@ Claude:
 ---
 
 ## Tools
+
+### Incident timeline
+| Tool | What it answers |
+|---|---|
+| `incident_timeline` | What changed, and what broke, in the last N hours? One ordered view across ServiceNow, Kubernetes, GitHub Actions and Jenkins, with the changes that landed just before the first failure listed as suspects |
+
+Suspects are matched by time proximity (a change within 2 hours before the first failure) and the response says so. A source that is unconfigured, in demo mode or failing is reported as skipped and never filled in with sample data.
 
 ### Kubernetes
 | Tool | What it answers |
