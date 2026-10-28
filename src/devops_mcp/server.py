@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -31,25 +32,44 @@ mcp = FastMCP(
 )
 
 _audit_path: Path | None = None
+_audit_lock = threading.Lock()
+_AUDIT_MAX_BYTES = 10 * 1024 * 1024
+_SECRET_KEYS = ("token", "secret", "password", "authorization", "webhook")
 
 
 def _init_audit() -> None:
     global _audit_path
     audit_dir = Path.home() / ".devops-mcp"
-    audit_dir.mkdir(exist_ok=True)
+    audit_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     _audit_path = audit_dir / "audit.log"
+    _audit_path.touch(mode=0o600, exist_ok=True)
+
+
+def _redact(params: dict[str, Any]) -> dict[str, Any]:
+    return {
+        k: "[redacted]" if any(w in k.lower() for w in _SECRET_KEYS) else v
+        for k, v in params.items()
+    }
 
 
 def _audit(tool: str, params: dict[str, Any]) -> None:
+    """Append one JSON line per tool call. A logging failure never fails the tool."""
     if _audit_path is None:
         return
     entry = {
         "ts": datetime.now(UTC).isoformat(),
         "tool": tool,
-        "params": params,
+        "params": _redact(params),
     }
-    with open(_audit_path, "a") as f:
-        f.write(json.dumps(entry) + "\n")
+    try:
+        with _audit_lock:
+            if _audit_path.exists() and _audit_path.stat().st_size > _AUDIT_MAX_BYTES:
+                _audit_path.replace(_audit_path.with_suffix(".log.1"))
+                _audit_path.touch(mode=0o600)
+            with open(_audit_path, "a") as f:
+                f.write(json.dumps(entry, default=str) + "\n")
+    except OSError as exc:
+        logger.warning("audit log write failed: %s", exc)
 
 
 def main() -> None:
@@ -97,7 +117,7 @@ def main() -> None:
         _version = "dev"
 
     logger.info(
-        "devops-mcp v%s started — registered: %s", _version, ", ".join(registered)
+        "devops-mcp v%s started, registered: %s", _version, ", ".join(registered)
     )
     mcp.run()
 

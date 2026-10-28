@@ -1,8 +1,9 @@
 import importlib
-import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+from tests.helpers import load
 
 
 class _FakeMCP:
@@ -42,9 +43,7 @@ def test_cloudwatch_logs_returns_events(monkeypatch, no_audit):
         ]
     }
     with patch("boto3.client", return_value=fake_client):
-        result = json.loads(
-            mcp.tools["aws_get_cloudwatch_logs"](log_group="/app/backend")
-        )
+        result = load(mcp.tools["aws_get_cloudwatch_logs"](log_group="/app/backend"))
 
     assert isinstance(result, list)
     assert len(result) == 2
@@ -63,7 +62,7 @@ def test_get_metric_returns_datapoints(monkeypatch, no_audit):
         ]
     }
     with patch("boto3.client", return_value=fake_client):
-        result = json.loads(
+        result = load(
             mcp.tools["aws_get_metric"](
                 namespace="AWS/ECS", metric_name="CPUUtilization"
             )
@@ -82,9 +81,7 @@ def test_describe_s3_bucket_returns_config(monkeypatch, no_audit):
     fake_client.get_bucket_versioning.return_value = {"Status": "Enabled"}
     fake_client.get_bucket_lifecycle_configuration.return_value = {"Rules": [{}, {}]}
     with patch("boto3.client", return_value=fake_client):
-        result = json.loads(
-            mcp.tools["aws_describe_s3_bucket"](bucket_name="my-bucket")
-        )
+        result = load(mcp.tools["aws_describe_s3_bucket"](bucket_name="my-bucket"))
 
     assert result["region"] == "us-west-2"
     assert result["versioning"] == "Enabled"
@@ -115,7 +112,7 @@ def test_ecs_service_status_shows_degraded(monkeypatch, no_audit):
         ]
     }
     with patch("boto3.client", return_value=fake_client):
-        result = json.loads(
+        result = load(
             mcp.tools["aws_get_ecs_service_status"](
                 cluster="prod-cluster", service="api-service"
             )
@@ -144,7 +141,7 @@ def test_demo_mode_without_credentials(monkeypatch, no_audit):
     mcp = _FakeMCP()
     aws.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["aws_get_cloudwatch_logs"](log_group="/app/backend"))
+    result = load(mcp.tools["aws_get_cloudwatch_logs"](log_group="/app/backend"))
     messages = " ".join(e["message"] for e in result)
     assert "ERROR" in messages
 
@@ -157,6 +154,6 @@ def test_demo_mode_when_boto3_unavailable(monkeypatch, no_audit):
     mcp = _FakeMCP()
     aws.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["aws_get_cloudwatch_logs"](log_group="/app/backend"))
+    result = load(mcp.tools["aws_get_cloudwatch_logs"](log_group="/app/backend"))
     messages = " ".join(e["message"] for e in result)
     assert "ERROR" in messages

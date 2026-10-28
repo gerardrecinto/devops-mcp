@@ -1,7 +1,8 @@
 import importlib
-import json
 import sys
 import types
+
+from tests.helpers import load
 
 
 class _FakeMCP:
@@ -29,7 +30,7 @@ class _FakeCoreApi:
     def list_namespaced_pod(self, namespace):
         return types.SimpleNamespace(items=self._pods)
 
-    def read_namespaced_pod_log(self, name, namespace, tail_lines):
+    def read_namespaced_pod_log(self, name, namespace, tail_lines, **kwargs):
         return self._log
 
     def read_namespaced_pod(self, name, namespace):
@@ -56,8 +57,20 @@ def _make_pod(
     ready=False,
     node="node-west-2a",
 ):
+    # Real clusters report CrashLoopBackOff as a container waiting reason on a
+    # Running pod, never as the pod phase.
+    waiting = None
+    if phase == "CrashLoopBackOff":
+        phase = "Running"
+        waiting = types.SimpleNamespace(reason="CrashLoopBackOff", message="back-off")
+    elif phase == "Running":
+        ready = True
     container_status = types.SimpleNamespace(
-        name="api-server", image=image, ready=ready, restart_count=restarts
+        name="api-server",
+        image=image,
+        ready=ready,
+        restart_count=restarts,
+        state=types.SimpleNamespace(waiting=waiting, terminated=None),
     )
     return types.SimpleNamespace(
         metadata=types.SimpleNamespace(name=name, namespace=namespace),
@@ -133,18 +146,17 @@ def test_get_failing_pods_returns_only_non_running(monkeypatch, no_audit):
     ]
     mcp = _register_configured(monkeypatch, no_audit, core_api=_FakeCoreApi(pods=pods))
 
-    result = json.loads(mcp.tools["k8s_get_failing_pods"](namespace="production"))
+    result = load(mcp.tools["k8s_get_failing_pods"](namespace="production"))
     assert isinstance(result, list)
     assert len(result) == 1
-    for pod in result:
-        assert pod["status"] not in ("Running", "Succeeded")
+    assert result[0]["status"] == "CrashLoopBackOff"
 
 
 def test_get_failing_pods_crashloop(monkeypatch, no_audit):
     pods = [_make_pod("api-server-7d9f8b-xk2pq", "production", "CrashLoopBackOff", 14)]
     mcp = _register_configured(monkeypatch, no_audit, core_api=_FakeCoreApi(pods=pods))
 
-    result = json.loads(mcp.tools["k8s_get_failing_pods"](namespace="production"))
+    result = load(mcp.tools["k8s_get_failing_pods"](namespace="production"))
     statuses = {p["status"] for p in result}
     assert "CrashLoopBackOff" in statuses
 
@@ -166,9 +178,7 @@ def test_describe_pod_has_required_keys(monkeypatch, no_audit):
     pods = [_make_pod("api-server-7d9f8b-xk2pq", "production", "CrashLoopBackOff", 14)]
     mcp = _register_configured(monkeypatch, no_audit, core_api=_FakeCoreApi(pods=pods))
 
-    result = json.loads(
-        mcp.tools["k8s_describe_pod"](pod_name="api-server-7d9f8b-xk2pq")
-    )
+    result = load(mcp.tools["k8s_describe_pod"](pod_name="api-server-7d9f8b-xk2pq"))
     for key in ("name", "namespace", "status", "containers"):
         assert key in result
 
@@ -188,7 +198,7 @@ def test_get_events_returns_warnings(monkeypatch, no_audit):
         monkeypatch, no_audit, core_api=_FakeCoreApi(events=events)
     )
 
-    result = json.loads(mcp.tools["k8s_get_events"](namespace="production"))
+    result = load(mcp.tools["k8s_get_events"](namespace="production"))
     assert isinstance(result, list)
     assert result[0]["reason"] == "BackOff"
 
@@ -205,9 +215,7 @@ def test_deployment_status_shows_unavailable(monkeypatch, no_audit):
     )
     mcp = _register_configured(monkeypatch, no_audit, apps_api=_FakeAppsApi(deployment))
 
-    result = json.loads(
-        mcp.tools["k8s_get_deployment_status"](deployment_name="api-server")
-    )
+    result = load(mcp.tools["k8s_get_deployment_status"](deployment_name="api-server"))
     assert result["unavailable"] > 0
     assert result["ready"] < result["desired"]
 
@@ -229,7 +237,7 @@ def test_demo_mode_without_kubeconfig(monkeypatch, no_audit):
     mcp = _FakeMCP()
     kubernetes_tools.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["k8s_get_failing_pods"](namespace="production"))
+    result = load(mcp.tools["k8s_get_failing_pods"](namespace="production"))
     assert any(p["status"] == "CrashLoopBackOff" for p in result)
 
 
@@ -241,5 +249,54 @@ def test_demo_mode_when_kubernetes_package_unavailable(monkeypatch, no_audit):
     mcp = _FakeMCP()
     kubernetes_tools.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["k8s_get_failing_pods"](namespace="production"))
+    result = load(mcp.tools["k8s_get_failing_pods"](namespace="production"))
     assert any(p["status"] == "CrashLoopBackOff" for p in result)
+
+
+def _pod(phase, statuses):
+    from types import SimpleNamespace as NS
+
+    return NS(
+        metadata=NS(name="api-1", namespace="prod"),
+        status=NS(phase=phase, container_statuses=statuses),
+    )
+
+
+def _cs(ready=True, restarts=0, waiting=None, terminated=None):
+    from types import SimpleNamespace as NS
+
+    return NS(
+        ready=ready,
+        restart_count=restarts,
+        state=NS(waiting=waiting, terminated=terminated),
+    )
+
+
+def test_pod_problem_flags_crashloop_with_running_phase():
+    from types import SimpleNamespace as NS
+
+    from devops_mcp.tools.kubernetes import _pod_problem
+
+    waiting = NS(reason="CrashLoopBackOff", message="back-off 5m")
+    row = _pod_problem(_pod("Running", [_cs(False, 14, waiting=waiting)]))
+    assert row["status"] == "CrashLoopBackOff"
+    assert row["restarts"] == 14
+
+
+def test_pod_problem_ignores_healthy_and_completed():
+    from devops_mcp.tools.kubernetes import _pod_problem
+
+    assert _pod_problem(_pod("Running", [_cs(True)])) is None
+    assert _pod_problem(_pod("Succeeded", [])) is None
+
+
+def test_pod_problem_flags_running_but_not_ready():
+    from devops_mcp.tools.kubernetes import _pod_problem
+
+    assert _pod_problem(_pod("Running", [_cs(False)]))["status"] == "NotReady"
+
+
+def test_pod_problem_flags_pending():
+    from devops_mcp.tools.kubernetes import _pod_problem
+
+    assert _pod_problem(_pod("Pending", []))["status"] == "Pending"

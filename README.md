@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-Compatible-green)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
-![Tests](https://img.shields.io/badge/Tests-42%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-56%20passed-brightgreen)
 
 ![DevOps MCP logo](docs/assets/logo.svg)
 
@@ -17,9 +17,21 @@ Built this after watching on-call engineers spend 25 minutes hunting across six 
 
 ![demo](docs/assets/demo.gif)
 
-## Business impact
+## Why this exists
 
-LLMs have no visibility into the systems engineers actually use. devops-mcp connects Claude to 7 enterprise systems (Jira, GitHub, Jenkins, AWS, Kubernetes, Grafana, Confluence) in a single MCP server. Deployed internally at Qualcomm to support a globally distributed org. Every hour saved per engineer per week across a 100-person platform team equals ~$1M/year recovered at $200K loaded cost.
+Chat assistants cannot see the systems on-call engineers actually use, so incident triage means copy-pasting between dashboards. devops-mcp gives Claude read access to those systems through one MCP server, with the guardrails an operations team needs before it will let a model near production.
+
+## Why not just ask an AI to write this
+
+A first draft of "wrap the Kubernetes API in an MCP tool" is easy. The parts that make it safe to run against production are not, and each one is tested here:
+
+- **It never invents data.** An unconfigured service returns a plain "not configured" error. Sample data is opt-in (`DEVOPS_MCP_DEMO=1`) and every response is labelled, so an assistant cannot report a made-up OOMKill or a Slack message that was never sent.
+- **It finds the failures that matter.** A crash-looping pod reports phase `Running`; the reason sits on the container state. The pod check reads container waiting and terminated reasons, so CrashLoopBackOff and ImagePullBackOff are caught, not just `Pending`.
+- **Read-only by design.** No tool applies, deletes, restarts or triggers anything. The only writes are Slack and Teams messages.
+- **Prompt-injection aware.** A webhook URL supplied by the model must be an https Microsoft endpoint, so injected text in a log line cannot make the server POST channel content to an arbitrary host.
+- **A private audit trail.** Every tool call is logged as one JSON line in `~/.devops-mcp/audit.log` (mode 0600, rotated at 10 MB). Secret-like parameters are redacted, and a logging failure never breaks a tool.
+- **Bounded output.** Pod logs are capped by lines and bytes, and Jenkins console logs are streamed so a multi-hundred-MB build log cannot exhaust memory.
+- **Partial installs work.** Each integration loads on its own; one broken module never stops the rest.
 
 ---
 
@@ -142,66 +154,65 @@ Claude:
 
 ---
 
-## Quick start
+## Install
+
+Needs Python 3.11+ and [pipx](https://pipx.pypa.io) (`pip install pipx`). This is not on PyPI; the `devops-mcp` package there is a different project, so install from GitHub.
 
 ```bash
-git clone https://github.com/gerardrecinto/devops-mcp.git
-cd devops-mcp
-pip install -e .
+pipx install "git+https://github.com/gerardrecinto/devops-mcp.git"
+claude mcp add devops-mcp -e DEVOPS_MCP_DEMO=1 -- devops-mcp
+```
 
-# Optional: extras for integrations you use
-pip install -e ".[azure]"
-pip install -e ".[gcp]"
-pip install -e ".[slack]"
+That is it. Ask Claude "which pods are failing?" and you get labelled sample data, so you can see how it works before connecting anything real.
+
+### Connect your systems
+
+Copy `.env.example` to `~/.devops-mcp/.env`, fill in only the services you use, and drop `DEVOPS_MCP_DEMO`:
+
+```bash
+claude mcp add devops-mcp -- devops-mcp
+```
+
+Azure, GCP and Slack need extras:
+
+```bash
+pipx install "devops-mcp[azure,gcp,slack] @ git+https://github.com/gerardrecinto/devops-mcp.git"
 ```
 
 ### Docker
 
+The image includes every integration. It speaks MCP over stdio, so the client starts it:
+
 ```bash
 docker pull ghcr.io/gerardrecinto/devops-mcp:latest
+claude mcp add devops-mcp -- docker run -i --rm --env-file ~/.devops-mcp/.env \
+  -v ~/.kube:/home/devops-mcp/.kube:ro ghcr.io/gerardrecinto/devops-mcp:latest
 ```
 
-```bash
-cp .env.example .env
-# Fill in credentials. Any service without credentials is skipped.
-```
+### Claude Desktop
 
-Add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`, then restart:
 
 ```json
 {
   "mcpServers": {
     "devops-mcp": {
       "command": "devops-mcp",
-      "env": {
-        "KUBECONFIG": "/Users/you/.kube/config",
-        "JENKINS_URL": "https://jenkins.example.com",
-        "JENKINS_TOKEN": "your-api-token",
-        "GITHUB_TOKEN": "ghp_xxxx",
-        "AWS_REGION": "us-west-2",
-        "SNOW_INSTANCE": "yourcompany.service-now.com",
-        "SLACK_BOT_TOKEN": "xoxb-xxxx"
-      }
+      "env": { "DEVOPS_MCP_DEMO": "1" }
     }
   }
 }
 ```
 
-Restart Claude Desktop. The devops-mcp tools appear in the toolbar.
-
-```bash
-# Docker Compose
-cp .env.example .env
-docker-compose up -d
-```
+Replace the `env` block with your real credentials (see `.env.example`) when you are ready.
 
 ---
 
 ## Resilient module loading
 
-Each tool module (Kubernetes, Jenkins, AWS, etc.) loads independently. If a module fails to import (missing credentials, optional dependency not installed), the server logs the error and continues. Every other module still registers its tools normally. Version is logged at startup so it shows in server logs.
+Each tool module (Kubernetes, Jenkins, AWS, etc.) loads independently. If a module fails to import, the server logs the error and continues. Every other module still registers its tools normally. The version is logged at startup.
 
-This means partial deployments work: install only the extras you need, skip the rest, and the server starts clean every time.
+A service without credentials answers with a "not configured" error instead of guessing. Set `DEVOPS_MCP_DEMO=1` to get labelled sample data instead.
 
 ---
 
@@ -220,7 +231,7 @@ Infrastructure tools are **read-only**. Claude can observe and explain, not modi
 | Create or close ServiceNow records | no |
 
 Credentials are environment variables only. Each service is independently optional.
-Every tool call is appended to `~/.devops-mcp/audit.log`.
+Every tool call is appended to `~/.devops-mcp/audit.log` with secret-like parameters redacted.
 
 For the commercial path, launch angles, and first-customer profile, see [docs/go-to-market.md](docs/go-to-market.md).
 

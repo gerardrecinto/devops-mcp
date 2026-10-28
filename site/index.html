@@ -157,25 +157,22 @@ pre.out{margin:0;padding:14px 16px;font-size:12.5px;line-height:1.55;background:
 
 <section id="install" class="install"><div class="wrap">
   <h2>Install</h2>
-  <p class="sub">Python 3.11 or later. Docker works too.</p>
+  <p class="sub">Python 3.11 or later with pipx. Docker works too. This is not the <code>devops-mcp</code> on PyPI, which is a different project.</p>
   <div class="cols2">
     <div>
-<pre>git clone https://github.com/gerardrecinto/devops-mcp.git
-cd devops-mcp
-pip install -e .
+<pre>pipx install "git+https://github.com/gerardrecinto/devops-mcp.git"
+claude mcp add devops-mcp -e DEVOPS_MCP_DEMO=1 -- devops-mcp
 
 # extras for the services you use
-pip install -e ".[azure]"
-pip install -e ".[gcp]"
-pip install -e ".[slack]"</pre>
+pipx install "devops-mcp[azure,gcp,slack] @ git+https://github.com/gerardrecinto/devops-mcp.git"</pre>
     </div>
     <div>
 <pre>docker pull ghcr.io/gerardrecinto/devops-mcp:latest
 
-cp .env.example .env
-# fill in credentials, then
-docker-compose up -d</pre>
-      <p class="note">Without credentials or an optional library, a tool returns built-in sample data instead of failing, which is how you can try it with no cluster.</p>
+claude mcp add devops-mcp -- docker run -i --rm \
+  --env-file ~/.devops-mcp/.env \
+  ghcr.io/gerardrecinto/devops-mcp:latest</pre>
+      <p class="note">Without credentials a tool returns a clear "not configured" error. Set <code>DEVOPS_MCP_DEMO=1</code> to get sample data labelled as such, which is how you can try it with no cluster.</p>
     </div>
   </div>
 </div></section>

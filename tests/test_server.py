@@ -41,3 +41,29 @@ def test_audit_noop_before_init(monkeypatch):
 
     monkeypatch.setattr(server, "_audit_path", None)
     server._audit("noop", {})
+
+
+def test_audit_redacts_secrets_and_survives_write_failure(tmp_path, monkeypatch):
+    from devops_mcp import server
+
+    log = tmp_path / "audit.log"
+    monkeypatch.setattr(server, "_audit_path", log)
+    server._audit(
+        "teams_post_message", {"title": "x", "webhook_url": "https://h/secret"}
+    )
+    assert "https://h/secret" not in log.read_text()
+    assert "[redacted]" in log.read_text()
+
+    monkeypatch.setattr(server, "_audit_path", tmp_path / "missing" / "audit.log")
+    server._audit("noop", {})  # must not raise
+
+
+def test_init_audit_log_is_private(tmp_path, monkeypatch):
+    import stat
+
+    from devops_mcp import server
+
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path / "nested" / "home")
+    server._init_audit()
+    mode = stat.S_IMODE(server._audit_path.stat().st_mode)
+    assert mode == 0o600

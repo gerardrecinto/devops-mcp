@@ -6,6 +6,8 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from devops_mcp.demo import demo_tool
+
 
 def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     try:
@@ -155,6 +157,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     except ImportError:
 
         @mcp.tool()
+        @demo_tool("Azure")
         def azure_get_monitor_logs(  # type: ignore[misc]
             workspace_id: str,
             query: str,
@@ -189,6 +192,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Azure")
         def azure_get_metric(  # type: ignore[misc]
             resource_uri: str,
             metric_name: str,
@@ -210,6 +214,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Azure")
         def azure_get_aks_node_status(resource_group: str, cluster_name: str) -> str:  # type: ignore[misc]
             """Get AKS cluster node status. (demo mode)"""
             audit(
@@ -245,6 +250,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Azure")
         def azure_get_resource_health(resource_uri: str) -> str:  # type: ignore[misc]
             """Get Azure Resource Health status. (demo mode)"""
             audit("azure_get_resource_health", {"resource_uri": resource_uri})
