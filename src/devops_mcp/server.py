@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -72,6 +73,29 @@ def _audit(tool: str, params: dict[str, Any]) -> None:
         logger.warning("audit log write failed: %s", exc)
 
 
+class _ToolTap:
+    """Passes tool registration through while remembering each tool by name,
+    so the incident timeline can call the other modules' tools."""
+
+    def __init__(self, mcp: Any, tools: dict[str, Callable[..., str]]) -> None:
+        self._mcp = mcp
+        self._tools = tools
+
+    def tool(
+        self, *args: Any, **kwargs: Any
+    ) -> Callable[[Callable[..., str]], Callable[..., str]]:
+        register = self._mcp.tool(*args, **kwargs)
+
+        def decorator(fn: Callable[..., str]) -> Callable[..., str]:
+            self._tools[fn.__name__] = fn
+            return register(fn)
+
+        return decorator
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._mcp, name)
+
+
 def main() -> None:
     _init_audit()
 
@@ -80,6 +104,7 @@ def main() -> None:
         azure,
         gcp,
         github_actions,
+        incident,
         jenkins,
         kubernetes,
         servicenow,
@@ -99,14 +124,22 @@ def main() -> None:
         teams,
     ]
     registered: list[str] = []
+    tools: dict[str, Callable[..., str]] = {}
+    tap = _ToolTap(mcp, tools)
     for mod in modules:
         name = mod.__name__.split(".")[-1]
         try:
-            mod.register(mcp, _audit)
+            mod.register(tap, _audit)
             registered.append(name)
         # One broken tool module must not stop the others.
         except Exception as exc:  # noqa: BLE001
             logger.warning("tool module %s failed to load: %s", name, exc)
+
+    try:
+        incident.register(mcp, _audit, tools)
+        registered.append("incident")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("tool module incident failed to load: %s", exc)
 
     try:
         from importlib.metadata import PackageNotFoundError

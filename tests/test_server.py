@@ -67,3 +67,16 @@ def test_init_audit_log_is_private(tmp_path, monkeypatch):
     server._init_audit()
     mode = stat.S_IMODE(server._audit_path.stat().st_mode)
     assert mode == 0o600
+
+
+def test_main_registers_incident_timeline(tmp_path, monkeypatch):
+    from devops_mcp import server
+
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(server.mcp, "run", lambda: None)
+    server.main()
+    import asyncio
+
+    names = {t.name for t in asyncio.run(server.mcp.list_tools())}
+    assert "incident_timeline" in names
+    assert "k8s_get_failing_pods" in names
