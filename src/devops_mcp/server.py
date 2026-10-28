@@ -145,7 +145,7 @@ def main() -> None:
         from importlib.metadata import PackageNotFoundError
         from importlib.metadata import version as _pkg_version
 
-        _version = _pkg_version("devops-mcp")
+        _version = _pkg_version("mcp-devops")
     except PackageNotFoundError:
         _version = "dev"
 
