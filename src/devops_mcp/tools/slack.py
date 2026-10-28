@@ -6,6 +6,8 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from devops_mcp.demo import demo_tool
+
 
 def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     try:
@@ -64,6 +66,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     except ImportError:
 
         @mcp.tool()
+        @demo_tool("Slack", writes=True)
         def slack_post_message(  # type: ignore[misc]
             channel: str,
             text: str,
@@ -75,6 +78,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Slack")
         def slack_get_channel_history(  # type: ignore[misc]
             channel: str,
             hours: int = 1,
@@ -103,6 +107,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Slack")
         def slack_search_messages(  # type: ignore[misc]
             query: str,
             count: int = 10,

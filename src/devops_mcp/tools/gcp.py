@@ -6,6 +6,8 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from devops_mcp.demo import demo_tool
+
 
 def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     try:
@@ -176,6 +178,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     except ImportError:
 
         @mcp.tool()
+        @demo_tool("GCP")
         def gcp_get_logs(  # type: ignore[misc]
             filter_str: str,
             hours: int = 1,
@@ -208,6 +211,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("GCP")
         def gcp_get_metric(  # type: ignore[misc]
             metric_type: str,
             minutes: int = 60,
@@ -237,6 +241,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("GCP")
         def gcp_get_gke_cluster_status(  # type: ignore[misc]
             cluster_name: str,
             location: str,
@@ -275,6 +280,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("GCP")
         def gcp_get_cloud_run_status(  # type: ignore[misc]
             service_name: str,
             region: str,

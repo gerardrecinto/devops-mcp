@@ -1,5 +1,6 @@
-import json
 import sys
+
+from tests.helpers import load
 
 
 class _FakeMCP:
@@ -27,7 +28,7 @@ def test_post_message_demo_returns_ok(no_audit):
     mcp = _FakeMCP()
     slack.register(mcp, no_audit)
 
-    result = json.loads(
+    result = load(
         mcp.tools["slack_post_message"](channel="#incidents", text="prod is down")
     )
     assert result["ok"] is True
@@ -39,7 +40,7 @@ def test_get_channel_history_demo_returns_messages(no_audit):
     mcp = _FakeMCP()
     slack.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["slack_get_channel_history"](channel="#incidents"))
+    result = load(mcp.tools["slack_get_channel_history"](channel="#incidents"))
     assert isinstance(result, list)
     assert len(result) > 0
     assert "text" in result[0]
@@ -50,7 +51,7 @@ def test_search_messages_demo_returns_matches(no_audit):
     mcp = _FakeMCP()
     slack.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["slack_search_messages"](query="OOMKilled"))
+    result = load(mcp.tools["slack_search_messages"](query="OOMKilled"))
     assert isinstance(result, list)
     assert len(result) > 0
     assert "channel" in result[0]
