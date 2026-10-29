@@ -4,7 +4,7 @@
 
 devops-mcp lets Claude read from your Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack and Teams, so on-call engineers can ask one question instead of checking six dashboards.
 
-Put simply: Claude can look at your servers and build systems for you and explain what it finds, but it cannot change them.
+New here? Claude can look at your servers and build systems for you and explain what it finds, but it cannot change them.
 
 It is an MCP server. MCP (Model Context Protocol) is the way Claude Code and Claude Desktop call outside tools. Site with the tool browser: https://gerardrecinto.github.io/devops-mcp/
 
