@@ -152,14 +152,14 @@ claude mcp add devops-mcp -- devops-mcp
 devops-mcp --check</pre>
   </div>
   <div class="cta"><button class="btn primary" type="button" data-copy="qs">Copy install commands</button><a href="#tools">Browse the tools</a></div>
-  <p class="note">Needs Python 3.11 or later and <a href="https://pipx.pypa.io">pipx</a>. It installs from GitHub: the <code>devops-mcp</code> name on PyPI is a different project.</p>
+  <p class="note">Needs Python 3.11 or later, <a href="https://pipx.pypa.io">pipx</a> on your PATH, and Claude Code to register the server. It installs from GitHub: the <code>devops-mcp</code> name on PyPI is a different project.</p>
   <p class="pw">MCP is a standard plug that lets Claude use outside tools, and this one lets it look at your servers and build systems.</p>
   <p class="stats"><span><b id="n-tools">33</b> tools</span><span><b>9</b> services</span><span>Read-only by default</span></p>
 </div></header>
 
 <section id="try"><div class="wrap">
   <h2>Then ask a question</h2>
-  <p class="sub">With no setup it uses your current kubeconfig. Ask Claude "Which pods are failing in my cluster?" and it answers about your real cluster. <code>devops-mcp --check</code> shows what is connected.</p>
+  <p class="sub">With no setup it uses your current kubeconfig. Ask Claude "Which pods are failing in my cluster?" and it answers about your real cluster. <code>devops-mcp --check</code> shows which services have local configuration. It does not test API connectivity or credentials.</p>
   <pre class="out scroll" tabindex="0" aria-label="Illustrative example session">You: "The API deployment has been stuck for 20 minutes. What's going on?"
 
 Claude:

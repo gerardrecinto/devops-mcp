@@ -47,10 +47,21 @@ _SECRET_KEYS = ("token", "secret", "password", "authorization", "webhook")
 
 def _init_audit() -> None:
     global _audit_path
+    _audit_path = None
     audit_dir = Path.home() / ".devops-mcp"
-    audit_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-    _audit_path = audit_dir / "audit.log"
-    _audit_path.touch(mode=0o600, exist_ok=True)
+    try:
+        audit_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        if audit_dir.is_symlink():
+            raise OSError("audit directory must not be a symbolic link")
+        audit_dir.chmod(0o700)
+        path = audit_dir / "audit.log"
+        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        with os.fdopen(os.open(path, flags, 0o600), "a") as log:
+            if hasattr(os, "fchmod"):
+                os.fchmod(log.fileno(), 0o600)
+        _audit_path = path
+    except OSError as exc:
+        logger.warning("audit logging is unavailable: %s", exc)
 
 
 def _redact(params: dict[str, Any]) -> dict[str, Any]:
@@ -196,7 +207,8 @@ def _cli_flag() -> bool:
     if "--check" in args:
         h = _health()
         print("devops-mcp is installed and starts.")
-        print(f"Connected: {', '.join(h['configured']) or 'nothing yet'}")
+        print(f"Configured locally: {', '.join(h['configured']) or 'nothing yet'}")
+        print("API connectivity and credentials have not been tested.")
         print(f"Not set up: {', '.join(h['not_configured']) or 'none'}")
         print(f"Sample data (DEVOPS_MCP_DEMO): {'on' if h['demo_mode'] else 'off'}")
         print(f"Next: {h['next_step']}")
