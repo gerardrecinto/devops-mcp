@@ -179,17 +179,21 @@ Needs Python 3.11+ and [pipx](https://pipx.pypa.io) (`pip install pipx`). This i
 
 ```bash
 pipx install "git+https://github.com/gerardrecinto/devops-mcp.git"
-claude mcp add devops-mcp -e DEVOPS_MCP_DEMO=1 -- devops-mcp
+claude mcp add devops-mcp -- devops-mcp
 ```
 
-That is it. Ask Claude "which pods are failing?" and you get labelled sample data, so you can see how it works before connecting anything real.
+With no other setup it reads your current kubeconfig, so "which pods are failing?" answers about your real cluster. Any service you have not configured returns a plain "not configured" error. Run `devops-mcp --check` in a terminal, or ask Claude to call `devops_mcp_health`, to see what is connected and what to do next.
 
-### Connect your systems
+### Connect more systems
 
-Copy `.env.example` to `~/.devops-mcp/.env`, fill in only the services you use, and drop `DEVOPS_MCP_DEMO`:
+Copy `.env.example` to `~/.devops-mcp/.env` and fill in only the services you use. The server reads that file on start.
+
+### Try it without credentials
+
+To see the output shape before connecting anything, add the demo flag. Every response is then labelled as sample data, and it is not real information about your systems. Remove the flag once you connect real ones.
 
 ```bash
-claude mcp add devops-mcp -- devops-mcp
+claude mcp add devops-mcp -e DEVOPS_MCP_DEMO=1 -- devops-mcp
 ```
 
 Azure, GCP and Slack need extras:
@@ -216,14 +220,13 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`, then r
 {
   "mcpServers": {
     "devops-mcp": {
-      "command": "devops-mcp",
-      "env": { "DEVOPS_MCP_DEMO": "1" }
+      "command": "devops-mcp"
     }
   }
 }
 ```
 
-Replace the `env` block with your real credentials (see `.env.example`) when you are ready.
+Credentials go in `~/.devops-mcp/.env` (see `.env.example`). To try sample data first, add `"env": { "DEVOPS_MCP_DEMO": "1" }` and remove it later.
 
 ---
 

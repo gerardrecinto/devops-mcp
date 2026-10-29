@@ -1,4 +1,5 @@
 import json
+import os
 
 
 def test_module_imports_and_constructs_fastmcp():
@@ -128,3 +129,41 @@ def test_health_tool_reports_modules(tmp_path, monkeypatch):
     assert "jenkins" in body["configured"]
     assert "slack" in body["not_configured"]
     assert body["writes_enabled"] is False
+
+
+def test_home_env_file_is_loaded(tmp_path, monkeypatch):
+    import importlib
+
+    from devops_mcp import server
+
+    (tmp_path / ".devops-mcp").mkdir()
+    (tmp_path / ".devops-mcp" / ".env").write_text("DEVOPS_MCP_TEST_FROM_FILE=yes\n")
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+    monkeypatch.delenv("DEVOPS_MCP_TEST_FROM_FILE", raising=False)
+    try:
+        importlib.reload(server)
+        assert os.environ.get("DEVOPS_MCP_TEST_FROM_FILE") == "yes"
+    finally:
+        os.environ.pop("DEVOPS_MCP_TEST_FROM_FILE", None)
+
+
+def test_not_configured_hint_names_the_variables():
+    import json
+
+    from devops_mcp.demo import not_configured
+
+    out = json.loads(not_configured("Slack"))
+    assert "SLACK_BOT_TOKEN" in out["hint"]
+    assert "~/.devops-mcp/.env" in out["hint"]
+
+
+def test_check_flag_prints_status(monkeypatch, capsys):
+    import sys
+
+    from devops_mcp import server
+
+    monkeypatch.setattr(sys, "argv", ["devops-mcp", "--check"])
+    server.main()
+    out = capsys.readouterr().out
+    assert "devops-mcp is installed" in out
+    assert "Next:" in out
