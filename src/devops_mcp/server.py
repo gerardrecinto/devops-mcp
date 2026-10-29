@@ -23,6 +23,9 @@ except ImportError:
     # mcp SDK 1.x
     from mcp.server.fastmcp import FastMCP
 
+# The README points people at ~/.devops-mcp/.env; a bare load_dotenv() searches
+# from the installed package, so it never found that file. Real env vars win.
+load_dotenv(Path.home() / ".devops-mcp" / ".env")
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -150,25 +153,60 @@ class _ToolTap:
         return getattr(self._mcp, name)
 
 
+def _health() -> dict[str, Any]:
+    configured = sorted(m for m in _CONFIG_ENV if _is_configured(m))
+    missing = sorted(m for m in _CONFIG_ENV if not _is_configured(m))
+    if configured:
+        next_step = "Ask about a configured service, or add credentials to ~/.devops-mcp/.env for the rest."
+    else:
+        next_step = (
+            "Nothing is connected yet. Put credentials in ~/.devops-mcp/.env "
+            "(see .env.example) and restart, or set DEVOPS_MCP_DEMO=1 to preview sample data."
+        )
+    return {
+        "configured": configured,
+        "not_configured": missing,
+        "demo_mode": demo_enabled(),
+        "writes_enabled": writes_enabled(),
+        "next_step": next_step,
+    }
+
+
 def _register_health(mcp: Any) -> None:
     @mcp.tool()
     def devops_mcp_health() -> str:
-        """Which integrations are configured, and whether sample data and writes are on."""
+        """Which integrations are configured, whether sample data and writes are on, and what to do next."""
         _audit("devops_mcp_health", {})
-        return json.dumps(
-            {
-                "configured": sorted(m for m in _CONFIG_ENV if _is_configured(m)),
-                "not_configured": sorted(
-                    m for m in _CONFIG_ENV if not _is_configured(m)
-                ),
-                "demo_mode": demo_enabled(),
-                "writes_enabled": writes_enabled(),
-            },
-            indent=2,
-        )
+        return json.dumps(_health(), indent=2)
+
+
+def _cli_flag() -> bool:
+    """Handle --check and --version so people can verify an install in a terminal."""
+    import sys
+
+    args = sys.argv[1:]
+    if "--version" in args:
+        try:
+            from importlib.metadata import version
+
+            print(version("mcp-devops"))
+        except Exception:  # noqa: BLE001
+            print("dev")
+        return True
+    if "--check" in args:
+        h = _health()
+        print("devops-mcp is installed and starts.")
+        print(f"Connected: {', '.join(h['configured']) or 'nothing yet'}")
+        print(f"Not set up: {', '.join(h['not_configured']) or 'none'}")
+        print(f"Sample data (DEVOPS_MCP_DEMO): {'on' if h['demo_mode'] else 'off'}")
+        print(f"Next: {h['next_step']}")
+        return True
+    return False
 
 
 def main() -> None:
+    if _cli_flag():
+        return
     _init_audit()
 
     from devops_mcp.tools import (
