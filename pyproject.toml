@@ -30,7 +30,7 @@ dependencies = [
 azure = [
     "azure-identity>=1.15.0,<2.0.0",
     "azure-monitor-query>=1.3.0,<2.0.0",
-    "azure-mgmt-containerservice>=29.0.0,<40.0.0",
+    "azure-mgmt-containerservice>=41.6.0,<42.0.0",
 ]
 gcp = [
     "google-cloud-logging>=3.9.0,<4.0.0",
