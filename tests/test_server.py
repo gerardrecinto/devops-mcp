@@ -1,4 +1,5 @@
 import json
+import os
 
 
 def test_module_imports_and_constructs_fastmcp():
@@ -67,3 +68,102 @@ def test_init_audit_log_is_private(tmp_path, monkeypatch):
     server._init_audit()
     mode = stat.S_IMODE(server._audit_path.stat().st_mode)
     assert mode == 0o600
+
+
+def test_main_registers_incident_timeline(tmp_path, monkeypatch):
+    from devops_mcp import server
+
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(server.mcp, "run", lambda: None)
+    server.main()
+    import asyncio
+
+    names = {t.name for t in asyncio.run(server.mcp.list_tools())}
+    assert "incident_timeline" in names
+    assert "k8s_get_failing_pods" in names
+
+
+def test_tool_exception_becomes_error_object():
+    from devops_mcp import server
+
+    def boom() -> str:
+        raise RuntimeError("upstream said no")
+
+    out = json.loads(server._guard(boom)())
+    assert out["error"] == "RuntimeError"
+    assert out["message"] == "upstream said no"
+    assert out["hint"]
+
+
+def test_registered_tools_are_guarded(tmp_path, monkeypatch):
+    from devops_mcp import server
+
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(server.mcp, "run", lambda: None)
+    seen = {}
+    real = server._ToolTap.__init__
+
+    def spy(self, mcp, tools):
+        real(self, mcp, tools)
+        seen["tools"] = tools
+
+    monkeypatch.setattr(server._ToolTap, "__init__", spy)
+    server.main()
+    assert seen["tools"]
+    assert all(hasattr(fn, "__wrapped__") for fn in seen["tools"].values())
+
+
+def test_health_tool_reports_modules(tmp_path, monkeypatch):
+    from devops_mcp import server
+
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(server.mcp, "run", lambda: None)
+    monkeypatch.setenv("JENKINS_URL", "https://j.example.com")
+    monkeypatch.delenv("SLACK_BOT_TOKEN", raising=False)
+    server.main()
+    import asyncio
+
+    result = asyncio.run(server.mcp.call_tool("devops_mcp_health", {}))
+    text = next(c.text for c in result.content if hasattr(c, "text"))
+    body = json.loads(text)
+    assert "jenkins" in body["configured"]
+    assert "slack" in body["not_configured"]
+    assert body["writes_enabled"] is False
+
+
+def test_home_env_file_is_loaded(tmp_path, monkeypatch):
+    import importlib
+
+    from devops_mcp import server
+
+    (tmp_path / ".devops-mcp").mkdir()
+    (tmp_path / ".devops-mcp" / ".env").write_text("DEVOPS_MCP_TEST_FROM_FILE=yes\n")
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+    monkeypatch.delenv("DEVOPS_MCP_TEST_FROM_FILE", raising=False)
+    try:
+        importlib.reload(server)
+        assert os.environ.get("DEVOPS_MCP_TEST_FROM_FILE") == "yes"
+    finally:
+        os.environ.pop("DEVOPS_MCP_TEST_FROM_FILE", None)
+
+
+def test_not_configured_hint_names_the_variables():
+    import json
+
+    from devops_mcp.demo import not_configured
+
+    out = json.loads(not_configured("Slack"))
+    assert "SLACK_BOT_TOKEN" in out["hint"]
+    assert "~/.devops-mcp/.env" in out["hint"]
+
+
+def test_check_flag_prints_status(monkeypatch, capsys):
+    import sys
+
+    from devops_mcp import server
+
+    monkeypatch.setattr(sys, "argv", ["devops-mcp", "--check"])
+    server.main()
+    out = capsys.readouterr().out
+    assert "devops-mcp is installed" in out
+    assert "Next:" in out

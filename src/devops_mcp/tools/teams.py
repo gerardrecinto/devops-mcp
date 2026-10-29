@@ -9,6 +9,14 @@ from urllib.parse import urlparse
 
 import requests as _requests
 
+from devops_mcp.demo import (
+    body_hash,
+    demo_tool,
+    error_response,
+    writes_disabled,
+    writes_enabled,
+)
+
 _WEBHOOK_HOSTS = (
     ".webhook.office.com",
     ".logic.azure.com",
@@ -30,7 +38,18 @@ def _allowed_webhook(url: str) -> bool:
     )
 
 
-from devops_mcp.demo import demo_tool
+def _override_allowlisted(url: str) -> bool:
+    """A model-supplied webhook is used only if its host is listed by the operator.
+
+    DEVOPS_MCP_TEAMS_WEBHOOK_ALLOWLIST is a comma-separated list of hostnames.
+    Unset means no per-call override at all.
+    """
+    allowed = {
+        h.strip().lower()
+        for h in os.getenv("DEVOPS_MCP_TEAMS_WEBHOOK_ALLOWLIST", "").split(",")
+        if h.strip()
+    }
+    return (urlparse(url).hostname or "").lower() in allowed
 
 
 def _get_graph_token(tenant_id: str, client_id: str, client_secret: str) -> str:
@@ -67,7 +86,10 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             webhook_url: str = "",
         ) -> str:
             """Post an alert card to a Teams channel via webhook. (demo mode -- TEAMS_WEBHOOK_URL not configured)"""
-            audit("teams_post_message", {"title": title})
+            audit(
+                "teams_post_message",
+                {"destination": "demo", "body_sha256": body_hash(title + text)},
+            )
             return json.dumps({"ok": True, "status": 200})
 
         @mcp.tool()
@@ -146,17 +168,35 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         webhook_url: str = "",
     ) -> str:
         """Post an alert card to a Teams channel via incoming webhook."""
-        audit("teams_post_message", {"title": title})
         url = webhook_url or default_webhook
-        if webhook_url and not _allowed_webhook(webhook_url):
-            return json.dumps(
-                {
-                    "error": "webhook_url must be an https Microsoft Teams or Power Automate URL."
-                }
-            )
+        audit(
+            "teams_post_message",
+            {
+                "destination": urlparse(url).hostname or "none",
+                "body_sha256": body_hash(title + "\n" + text),
+                "body_chars": len(title) + len(text),
+            },
+        )
+        if not writes_enabled():
+            return writes_disabled("teams_post_message")
+        if webhook_url:
+            if not _allowed_webhook(webhook_url):
+                return error_response(
+                    "webhook_rejected",
+                    "webhook_url must be an https Microsoft Teams or Power Automate URL.",
+                    "Leave webhook_url empty to use TEAMS_WEBHOOK_URL.",
+                )
+            if not _override_allowlisted(webhook_url):
+                return error_response(
+                    "webhook_rejected",
+                    "Per-call webhook_url is not allowed for this host.",
+                    "Add the host to DEVOPS_MCP_TEAMS_WEBHOOK_ALLOWLIST, or leave webhook_url empty.",
+                )
         if not url:
-            return json.dumps(
-                {"error": "No webhook URL provided and TEAMS_WEBHOOK_URL is not set."}
+            return error_response(
+                "not_configured",
+                "No webhook URL provided and TEAMS_WEBHOOK_URL is not set.",
+                "Set TEAMS_WEBHOOK_URL in .env.",
             )
         payload = {
             "@type": "MessageCard",
