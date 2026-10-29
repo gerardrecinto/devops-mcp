@@ -1,20 +1,21 @@
-version: "3.9"
-
+# devops-mcp speaks MCP over stdio, so it is started by the client, not left running.
+#   docker compose run -i --rm devops-mcp
 services:
   devops-mcp:
     build: .
-    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
     environment:
       - KUBECONFIG=/home/devops-mcp/.kube/config
-      - JENKINS_URL=${JENKINS_URL}
-      - JENKINS_USER=${JENKINS_USER}
-      - JENKINS_TOKEN=${JENKINS_TOKEN}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - AWS_REGION=${AWS_REGION:-us-east-1}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     volumes:
       - ${HOME}/.kube:/home/devops-mcp/.kube:ro
       - ${HOME}/.devops-mcp:/home/devops-mcp/.devops-mcp
     stdin_open: true
-    tty: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
