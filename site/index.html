@@ -153,7 +153,7 @@ devops-mcp --check</pre>
   </div>
   <div class="cta"><button class="btn primary" type="button" data-copy="qs">Copy install commands</button><a href="#tools">Browse the tools</a></div>
   <p class="note">Needs Python 3.11 or later and <a href="https://pipx.pypa.io">pipx</a>. It installs from GitHub: the <code>devops-mcp</code> name on PyPI is a different project.</p>
-  <p class="pw"><b>Put simply:</b> MCP is a standard plug that lets Claude use outside tools, and this one lets it look at your servers and build systems.</p>
+  <p class="pw">MCP is a standard plug that lets Claude use outside tools, and this one lets it look at your servers and build systems.</p>
   <p class="stats"><span><b id="n-tools">33</b> tools</span><span><b>9</b> services</span><span>Read-only by default</span></p>
 </div></header>
 
@@ -179,7 +179,7 @@ Claude:
 <section id="tools"><div class="wrap">
   <h2>The tools</h2>
   <p class="sub">Built from the source code on every deploy. <span class="cnt" id="count" aria-live="polite"></span></p>
-  <p class="pw"><b>Put simply:</b> each card is one question Claude can ask a system for you, such as which builds are failing.</p>
+  <p class="pw">Each card is one question Claude can ask a system for you, such as which builds are failing.</p>
   <div class="tools2"><label class="sr" for="q">Search tools</label><input id="q" type="search" placeholder="Search by name, service or question">
     <span class="tools" id="filters" role="group" aria-label="Filter by service"></span></div>
   <div class="grid" id="grid"><div class="status">Loading the tool list...</div></div>
@@ -190,7 +190,7 @@ Claude:
   <h2>Connect your systems</h2>
   <p class="sub">Put credentials for the services you use in <code>~/.devops-mcp/.env</code> (copy <code>.env.example</code> from the repo), then restart Claude. Services without credentials are skipped.</p>
   <details class="fold"><summary>Build a starter .env</summary>
-    <p class="pw"><b>Put simply:</b> this makes a text file of the logins Claude needs, with blanks for you to fill in.</p>
+    <p class="pw">This makes a text file of the logins Claude needs, with blanks for you to fill in.</p>
     <div class="lab">
       <div class="card"><h3><span>Services</span></h3><div class="svc" id="svc" role="group" aria-label="Services"></div></div>
       <div class="card"><h3><span>~/.devops-mcp/.env</span><span class="tools"><button class="chip" type="button" data-copy="env">Copy</button></span></h3>
@@ -214,7 +214,7 @@ claude mcp add devops-mcp -- docker run -i --rm --env-file ~/.devops-mcp/.env \
 
 <section><div class="wrap">
   <h2>What it does and does not do</h2>
-  <p class="pw"><b>Put simply:</b> Claude can look at your systems but not change them, apart from chat messages you switch on, and a private log records every look.</p>
+  <p class="pw">Claude can look at your systems but not change them, apart from chat messages you switch on, and a private log records every look.</p>
   <ul class="plain">
     <li><strong>Read-only by default.</strong> It cannot apply, delete, restart or trigger anything. The only writes are Slack and Teams messages, and they stay off unless you set <code>DEVOPS_MCP_ENABLE_WRITES=1</code>.</li>
     <li><strong>Every call is logged</strong> to <code>~/.devops-mcp/audit.log</code>, with secret-like values hidden.</li>
