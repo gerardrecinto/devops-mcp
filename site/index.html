@@ -4,10 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>devops-mcp: ask Claude about your live systems</title>
-<meta name="description" content="An MCP server that connects Claude to Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack and Teams. Browse the tools and build your config.">
-<meta property="og:title" content="devops-mcp">
-<meta property="og:description" content="An MCP server that connects Claude to Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack and Teams. Browse the tools and build your config.">
+<meta name="description" content="An MCP server that gives Claude read access to Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack and Teams, so on-call engineers can ask one question instead of checking six dashboards.">
+<link rel="canonical" href="https://gerardrecinto.github.io/devops-mcp/">
+<meta name="theme-color" content="#06b6d4">
+<meta property="og:title" content="devops-mcp: ask Claude about your live systems">
+<meta property="og:description" content="An MCP server that gives Claude read access to Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack and Teams. Read-only by default, every call audited.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://gerardrecinto.github.io/devops-mcp/">
+<meta property="og:site_name" content="devops-mcp">
+<meta property="og:image" content="https://gerardrecinto.github.io/devops-mcp/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="devops-mcp: ask Claude about your live systems">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="devops-mcp: ask Claude about your live systems">
+<meta name="twitter:description" content="An MCP server that gives Claude read access to Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack and Teams.">
+<meta name="twitter:image" content="https://gerardrecinto.github.io/devops-mcp/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2306b6d4'/%3E%3Ccircle cx='16' cy='16' r='6' fill='none' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E">
 <style>
 
@@ -16,6 +28,10 @@
 :root[data-theme=dark]{--bg:#070d1a;--panel:#0d1526;--panel2:#111c33;--line:#1e2b47;--fg:#e8eefc;--mute:#9fb0cc;--brand:#22d3ee;--brand-bg:#08333d;--ok:#34d399;--ok-bg:#06382b;--err:#fca5a5;--err-bg:#3b1212}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+section[id],header[id]{scroll-margin-top:64px}
+.skip{position:absolute;left:8px;top:-48px;background:var(--panel);color:var(--fg);padding:8px 14px;border-radius:8px;z-index:10;border:1px solid var(--line)}
+.skip:focus{top:8px}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 a{color:var(--brand)}
 code,pre,textarea,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
@@ -31,14 +47,34 @@ nav .links a:hover{color:var(--fg)}
 .btn.primary{background:#06b6d4;border-color:#06b6d4;color:#032a33}
 .btn.primary:hover{background:#22d3ee}
 .btn:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid #06b6d4;outline-offset:2px}
-.hero{padding:72px 0 40px;text-align:center}
+.hero{padding:64px 0 40px;text-align:center}
+.qs{max-width:720px;margin:0 auto 14px;text-align:left;position:relative}
+.qs pre{margin:0;padding:16px 16px 16px;background:var(--code);color:var(--code-fg);border-radius:12px;overflow-x:auto;font-size:13.5px;line-height:1.7}
+.qs .copy,.cardcopy{font:600 12px system-ui}
+.cta a:not(.btn){align-self:center;font-weight:600}
+.cta{align-items:stretch}
+.stats span{white-space:nowrap}
+.fold{margin:0 0 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0 16px}
+.fold summary{cursor:pointer;padding:14px 0;font-weight:600}
+.fold[open] summary{border-bottom:1px solid var(--line);margin-bottom:14px}
+.fold>.qs,.fold>.lab{margin-bottom:14px}
+.plain{padding-left:20px;max-width:760px;color:var(--mute)}.plain li{margin-bottom:10px}.plain strong{color:var(--fg)}
+.qs .copy{position:absolute;top:8px;right:8px;padding:6px 12px;min-height:32px;border-radius:8px;border:1px solid #334155;background:#16223a;color:#e2e8f0;cursor:pointer}
+.qs .copy:hover{background:#1e2d4d}
+.qs pre{padding-right:84px}
+.demo-note{display:inline-block;font-size:12px;font-weight:700;color:#92400e;background:#fef3c7;border-radius:6px;padding:2px 8px;margin-left:8px}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .demo-note{background:#3a2a07;color:#fcd34d}}
+.pw{font-size:14px;color:var(--mute);margin:0 0 14px;max-width:720px}.pw b{font-weight:600}
+.hero .pw{margin:12px auto 0}
+.scroll{overflow:auto}
+.scroll:focus-visible{outline:2px solid #06b6d4;outline-offset:-2px}
 .pill{display:inline-block;font-size:13px;color:var(--brand);background:var(--brand-bg);padding:4px 12px;border-radius:99px;margin-bottom:20px;font-weight:600}
 h1{font-size:clamp(34px,6vw,58px);line-height:1.08;margin:0 0 18px;letter-spacing:-.02em}
 h1 em{font-style:normal;color:var(--brand)}
 .lede{max-width:700px;margin:0 auto 28px;color:var(--mute);font-size:18px}
 .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.stats{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;margin-top:36px;color:var(--mute);font-size:14px}
-.stats b{display:block;color:var(--fg);font-size:22px}
+.stats{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;margin-top:36px;color:var(--mute);font-size:14px}
+.stats b{color:var(--fg)}
 section{padding:56px 0}
 h2{font-size:clamp(26px,4vw,36px);margin:0 0 8px;letter-spacing:-.01em}
 .sub{color:var(--mute);margin:0 0 28px;max-width:720px}
@@ -47,26 +83,9 @@ h2{font-size:clamp(26px,4vw,36px);margin:0 0 8px;letter-spacing:-.01em}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-width:0}
 .card h3{margin:0;padding:12px 16px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .tools{display:flex;gap:6px;flex-wrap:wrap}
-.chip{font:600 12px system-ui;padding:5px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);cursor:pointer;text-transform:none;letter-spacing:0}
+.chip{font:600 13px system-ui;padding:8px 12px;min-height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);cursor:pointer;text-transform:none;letter-spacing:0}
 .chip[aria-pressed=true]{background:var(--brand-bg);border-color:var(--brand);color:var(--brand)}
-#log{display:block;width:100%;height:420px;border:0;padding:12px 14px;font-size:12.5px;line-height:1.55;background:var(--code);color:var(--code-fg);resize:vertical;white-space:pre;overflow:auto}
-.src{display:flex;gap:8px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--mute);flex-wrap:wrap}
-.out{min-height:420px}
 .status{padding:16px;color:var(--mute);font-size:14px}
-.verdict{padding:18px 16px;border-bottom:1px solid var(--line);background:var(--err-bg)}
-.verdict.unknown{background:var(--panel2)}
-.verdict b{display:block;font-size:20px;text-transform:uppercase;letter-spacing:.04em;color:var(--err)}
-.verdict.unknown b{color:var(--mute)}
-.verdict span{font-size:14px;color:var(--mute)}
-.sec{padding:14px 16px;border-bottom:1px solid var(--line)}
-.sec:last-child{border-bottom:0}
-.sec h4{margin:0 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
-.bar{height:10px;border-radius:99px;background:var(--panel2);overflow:hidden;max-width:260px;display:inline-block;vertical-align:middle;margin-right:10px;width:60%}
-.bar i{display:block;height:100%;background:#06b6d4}
-.site{padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
-.site:last-child{border:0}
-.site code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-size:12px}
-.fix{background:var(--ok-bg);color:var(--ok);padding:10px 12px;border-radius:8px;font-size:14px}
 .note{font-size:13px;color:var(--mute);margin-top:12px}
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 @media (max-width:860px){.steps{grid-template-columns:minmax(0,1fr)}}
@@ -83,8 +102,6 @@ td:first-child{font-family:ui-monospace,monospace;font-weight:700;white-space:no
 .install pre{background:var(--code);color:var(--code-fg);padding:16px;border-radius:12px;overflow-x:auto;font-size:13.5px;margin:0 0 12px}
 .cols2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
 @media (max-width:860px){.cols2{grid-template-columns:minmax(0,1fr)}}
-.limits{background:var(--panel);border:1px solid var(--line);border-left:4px solid #f59e0b;border-radius:10px;padding:16px 20px}
-.limits ul{margin:8px 0 0;padding-left:20px;color:var(--mute)}
 footer{border-top:1px solid var(--line);padding:32px 0;color:var(--mute);font-size:14px}
 footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -92,7 +109,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .svc{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:14px}
 .svc label{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;background:var(--panel2)}
 .svc input{accent-color:var(--brand)}
-pre.out{margin:0;padding:14px 16px;font-size:12.5px;line-height:1.55;background:var(--code);color:var(--code-fg);overflow:auto;max-height:420px;white-space:pre}
+pre.out{margin:0;min-height:120px;padding:14px 16px;font-size:12.5px;line-height:1.55;background:var(--code);color:var(--code-fg);overflow:auto;max-height:420px;white-space:pre}
 .tools2{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .tools2 input[type=search]{flex:1;min-width:200px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:15px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
@@ -107,139 +124,172 @@ pre.out{margin:0;padding:14px 16px;font-size:12.5px;line-height:1.55;background:
 .note code,.sub code,.t .a code{overflow-wrap:anywhere}
 .t .a{display:flex;flex-wrap:wrap;gap:4px}
 .t .a code{margin:0;max-width:100%}
+.btn,.chip,.t,.step,.svc label,.qs .copy{transition:background-color .18s ease-out,border-color .18s ease-out,transform .18s ease-out,box-shadow .18s ease-out}
+.btn:hover,.chip:hover{transform:translateY(-1px)}
+.t:hover,.step:hover{transform:translateY(-2px);border-color:var(--brand)}
+.js .rv{opacity:0;transform:translateY(16px);transition:opacity .5s ease-out,transform .5s ease-out}
+.js .rv.in{opacity:1;transform:none}
+.js .steps .rv:nth-child(2){transition-delay:.08s}.js .steps .rv:nth-child(3){transition-delay:.16s}
+@supports (animation-timeline:view()){.hero .wrap{animation:heroout linear both;animation-timeline:view();animation-range:exit 10% exit 90%}}
+@keyframes heroout{to{opacity:.55;transform:scale(.97) translateY(-12px)}}
+@media (prefers-reduced-motion:reduce){.js .rv,.js .rv.in{opacity:1;transform:none;transition:none}.hero .wrap{animation:none!important}.btn:hover,.chip:hover,.t:hover,.step:hover{transform:none}}
 </style>
 </head>
 <body>
-<nav><div class="wrap">
-  <a class="logo" href="#top"><i></i>devops-mcp</a>
-  <div class="links"><a href="#try" class="hide-s">Config</a><a href="#tools" class="hide-s">Tools</a><a href="#install" class="hide-s">Install</a><a class="btn" href="https://github.com/gerardrecinto/devops-mcp">GitHub</a></div>
+<a class="skip" href="#main">Skip to content</a>
+<nav aria-label="Primary"><div class="wrap">
+  <a class="logo" href="#top"><i aria-hidden="true"></i>devops-mcp</a>
+  <div class="links"><a href="#try" class="hide-s">Try it</a><a href="#tools" class="hide-s">Tools</a><a href="#connect" class="hide-s">Connect</a><a class="btn" href="https://github.com/gerardrecinto/devops-mcp">GitHub</a></div>
 </div></nav>
 
+<main id="main">
 <header class="hero" id="top"><div class="wrap">
   <h1>Ask Claude why production is down. Get answers from your <em>live systems</em>.</h1>
-  <p class="lede">An MCP server that gives Claude read access to Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack and Microsoft Teams, so one question replaces six dashboards. Every call is audited.</p>
-  <div class="cta"><a class="btn primary" href="#try">Build your config</a><a class="btn" href="#tools">Browse the tools</a></div>
-  <div class="stats"><div><b>9</b>services</div><div><b id="n-tools">31</b>tools</div><div><b>1</b>file of credentials, all optional</div></div>
+  <p class="lede">devops-mcp lets Claude read your Kubernetes, Jenkins, AWS and other DevOps systems, so on-call engineers ask one question instead of checking six dashboards.</p>
+  <div class="qs">
+    <pre id="qs" tabindex="0" aria-label="Install commands">pipx install "git+https://github.com/gerardrecinto/devops-mcp.git"
+claude mcp add devops-mcp -- devops-mcp
+devops-mcp --check</pre>
+  </div>
+  <div class="cta"><button class="btn primary" type="button" data-copy="qs">Copy install commands</button><a href="#tools">Browse the tools</a></div>
+  <p class="note">Needs Python 3.11 or later and <a href="https://pipx.pypa.io">pipx</a>. It installs from GitHub: the <code>devops-mcp</code> name on PyPI is a different project.</p>
+  <p class="pw"><b>In plain words:</b> MCP is a standard plug that lets Claude use outside tools, and this one lets it look at your servers and build systems.</p>
+  <p class="stats"><span><b id="n-tools">33</b> tools</span><span><b>9</b> services</span><span>Read-only by default</span></p>
 </div></header>
 
-
 <section id="try"><div class="wrap">
-  <h2>Build your config</h2>
-  <p class="sub">Pick the systems you use. The page writes the Claude Desktop config and the matching <code>.env</code> with placeholders. Each service is independent, and any service without credentials is skipped. Nothing here is sent anywhere.</p>
-  <div class="lab">
-    <div class="card"><h3><span>Services</span></h3>
-      <div class="svc" id="svc" role="group" aria-label="Services"></div>
-    </div>
-    <div class="card"><h3><span>claude_desktop_config.json</span><span class="tools"><button class="chip" id="copy">Copy</button></span></h3>
-      <pre class="out" id="cfg" aria-live="polite"></pre>
-    </div>
-  </div>
-  <p class="note">On macOS the file is <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>. Restart Claude Desktop after editing. Replace every placeholder with your own value.</p>
+  <h2>Then ask a question</h2>
+  <p class="sub">With no setup it uses your current kubeconfig. Ask Claude "Which pods are failing in my cluster?" and it answers about your real cluster. <code>devops-mcp --check</code> shows what is connected.</p>
+  <pre class="out scroll" tabindex="0" aria-label="Illustrative example session">You: "The API deployment has been stuck for 20 minutes. What's going on?"
+
+Claude:
+  [k8s_get_failing_pods("production")]
+  api-server-7d9f8b-xk2p9  CrashLoopBackOff  restarts: 14
+
+  [k8s_pod_logs("api-server-7d9f8b-xk2p9", tail_lines=30)]
+  [09:10:03] FATAL  postgresql://db-prod:5432: Connection refused
+
+  [k8s_get_events("production", event_type="Warning")]
+  OOMKilling  Pod/db-prod-0  "Memory limit exceeded"  count: 3
+
+  db-prod-0 was OOMKilled, so the API pods cannot reach the database.</pre>
+  <p class="note"><span class="demo-note">illustrative</span> Pod names, incident number and times are made up. This is not output from a real system.</p>
 </div></section>
 
 <section id="tools"><div class="wrap">
   <h2>The tools</h2>
-  <p class="sub">Generated from the source on every deploy, so the list cannot drift from the code. <span class="cnt" id="count"></span></p>
-  <div class="tools2"><label class="sr" for="q">Search tools</label><input id="q" type="search" placeholder="Search by name, service or what it answers">
+  <p class="sub">Built from the source code on every deploy. <span class="cnt" id="count" aria-live="polite"></span></p>
+  <p class="pw"><b>In plain words:</b> each card is one question Claude can ask a system for you, such as which builds are failing.</p>
+  <div class="tools2"><label class="sr" for="q">Search tools</label><input id="q" type="search" placeholder="Search by name, service or question">
     <span class="tools" id="filters" role="group" aria-label="Filter by service"></span></div>
   <div class="grid" id="grid"><div class="status">Loading the tool list...</div></div>
+  <noscript><p class="note">This list needs JavaScript. The <a href="https://github.com/gerardrecinto/devops-mcp#tools">README</a> has the full table.</p></noscript>
+</div></section>
+
+<section id="connect"><div class="wrap">
+  <h2>Connect your systems</h2>
+  <p class="sub">Put credentials for the services you use in <code>~/.devops-mcp/.env</code> (copy <code>.env.example</code> from the repo), then restart Claude. Services without credentials are skipped.</p>
+  <details class="fold"><summary>Build a starter .env</summary>
+    <p class="pw"><b>In plain words:</b> this makes a text file of the logins Claude needs, with blanks for you to fill in.</p>
+    <div class="lab">
+      <div class="card"><h3><span>Services</span></h3><div class="svc" id="svc" role="group" aria-label="Services"></div></div>
+      <div class="card"><h3><span>~/.devops-mcp/.env</span><span class="tools"><button class="chip" type="button" data-copy="env">Copy</button></span></h3>
+        <pre class="out" id="env" tabindex="0" aria-label=".env contents"></pre></div>
+    </div>
+    <p class="note">Replace every placeholder and delete the lines for services you do not use. Nothing here is sent anywhere. Kubernetes needs no entry.</p>
+  </details>
+  <details class="fold"><summary>Docker, extras, Claude Desktop and sample data</summary>
+    <p class="note">Azure, GCP and Slack need extra packages:</p>
+    <div class="qs"><pre id="i2" tabindex="0" aria-label="pipx extras command">pipx install --force "mcp-devops[azure,gcp,slack] @ git+https://github.com/gerardrecinto/devops-mcp.git"</pre><button class="copy" type="button" data-copy="i2">Copy</button></div>
+    <p class="note">Docker (the image includes every integration):</p>
+    <div class="qs"><pre id="i3" tabindex="0" aria-label="Docker commands">docker pull ghcr.io/gerardrecinto/devops-mcp:latest
+claude mcp add devops-mcp -- docker run -i --rm --env-file ~/.devops-mcp/.env \
+  -v ~/.kube:/home/devops-mcp/.kube:ro ghcr.io/gerardrecinto/devops-mcp:latest</pre><button class="copy" type="button" data-copy="i3">Copy</button></div>
+    <p class="note">Claude Desktop: add this to <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> and restart.</p>
+    <div class="qs"><pre id="cfg" tabindex="0" aria-label="Claude Desktop config"></pre><button class="copy" type="button" data-copy="cfg">Copy</button></div>
+    <p class="note"><strong>No credentials yet?</strong> The demo flag returns sample data. Every response is labelled as sample data and is not real information about your systems. Remove the flag once you connect real ones.</p>
+    <div class="qs"><pre id="i4" tabindex="0" aria-label="Demo mode command">claude mcp add devops-mcp -e DEVOPS_MCP_DEMO=1 -- devops-mcp</pre><button class="copy" type="button" data-copy="i4">Copy</button></div>
+  </details>
 </div></section>
 
 <section><div class="wrap">
-  <h2>How it works</h2>
-  <p class="sub">An MCP server over stdio. Claude decides which tools to call, the server runs them against your systems and returns plain results.</p>
-  <div class="steps">
-    <div class="step"><div class="n">1</div><h3>Read-only by default</h3><p>The infrastructure tools observe: pods, logs, builds, metrics, incidents. The README states they cannot modify infrastructure.</p></div>
-    <div class="step"><div class="n">2</div><h3>Each service stands alone</h3><p>A module that fails to import or has no credentials is skipped and logged. The rest still register, so a partial install works.</p></div>
-    <div class="step"><div class="n">3</div><h3>Every call is logged</h3><p>Each tool call is appended to <code>~/.devops-mcp/audit.log</code> with its parameters. Credentials come only from environment variables.</p></div>
-  </div>
+  <h2>What it does and does not do</h2>
+  <p class="pw"><b>In plain words:</b> Claude can look at your systems but not change them, apart from chat messages you switch on, and a private log records every look.</p>
+  <ul class="plain">
+    <li><strong>Read-only by default.</strong> It cannot apply, delete, restart or trigger anything. The only writes are Slack and Teams messages, and they stay off unless you set <code>DEVOPS_MCP_ENABLE_WRITES=1</code>.</li>
+    <li><strong>Every call is logged</strong> to <code>~/.devops-mcp/audit.log</code>, with secret-like values hidden.</li>
+    <li><strong>It reports what the APIs return.</strong> Claude's guess at a root cause is a hypothesis to check, not a verdict.</li>
+    <li><strong>No live demo here.</strong> The tools need your credentials and systems, so this page shows the catalog.</li>
+  </ul>
 </div></section>
-
-<section id="install" class="install"><div class="wrap">
-  <h2>Install</h2>
-  <p class="sub">Python 3.11 or later with pipx. Docker works too. This is not the <code>devops-mcp</code> on PyPI, which is a different project.</p>
-  <div class="cols2">
-    <div>
-<pre>pipx install "git+https://github.com/gerardrecinto/devops-mcp.git"
-claude mcp add devops-mcp -e DEVOPS_MCP_DEMO=1 -- devops-mcp
-
-# extras for the services you use
-pipx install "mcp-devops[azure,gcp,slack] @ git+https://github.com/gerardrecinto/devops-mcp.git"</pre>
-    </div>
-    <div>
-<pre>docker pull ghcr.io/gerardrecinto/devops-mcp:latest
-
-claude mcp add devops-mcp -- docker run -i --rm \
-  --env-file ~/.devops-mcp/.env \
-  ghcr.io/gerardrecinto/devops-mcp:latest</pre>
-      <p class="note">Without credentials a tool returns a clear "not configured" error. Set <code>DEVOPS_MCP_DEMO=1</code> to get sample data labelled as such, which is how you can try it with no cluster.</p>
-    </div>
-  </div>
-</div></section>
-
-<section><div class="wrap">
-  <div class="limits">
-    <strong>What this does not do</strong>
-    <ul>
-      <li>It cannot demo live here. The tools need your credentials and your systems, so this page shows the catalog and builds your config instead.</li>
-      <li>The Slack and Teams post tools send messages. They are the exception to read-only, so give those tokens narrow scopes.</li>
-      <li>It reports what the APIs return. Claude's explanation of a root cause is a hypothesis to check, not a verdict.</li>
-    </ul>
-  </div>
-</div></section>
-
+</main>
 
 <footer><div class="wrap">
-  <span>devops-mcp. MIT licensed. Built by <a href="https://github.com/gerardrecinto">Gerard Recinto</a>.</span>
-  <span><a href="https://github.com/gerardrecinto/devops-mcp">Source</a> &middot; <a href="https://github.com/gerardrecinto/devops-mcp/releases">Releases</a></span>
+  <span>devops-mcp. MIT licensed (per the package metadata). Built by <a href="https://github.com/gerardrecinto">Gerard Recinto</a>.</span>
+  <span><a href="https://github.com/gerardrecinto/devops-mcp">Source</a> &middot; <a href="https://github.com/gerardrecinto/devops-mcp#readme">README</a> &middot; <a href="https://github.com/gerardrecinto/devops-mcp/releases">Releases</a> &middot; <a href="https://github.com/gerardrecinto/devops-mcp/issues">Issues</a></span>
 </div></footer>
 
 <script>
-
 (() => {
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const track = (n) => { try { if (window.plausible) window.plausible(n); } catch (e) {} };
-  const LABEL = { kubernetes: "Kubernetes", jenkins: "Jenkins", github_actions: "GitHub Actions", aws: "AWS", azure: "Azure", gcp: "GCP", servicenow: "ServiceNow", slack: "Slack", teams: "Microsoft Teams" };
+  const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
+  if (!rm && "IntersectionObserver" in window) {
+    document.documentElement.classList.add("js");
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px" });
+    document.querySelectorAll("main section .wrap > *:not(.steps), .steps > *").forEach((el) => { el.classList.add("rv"); io.observe(el); });
+  }
+  const LABEL = { kubernetes: "Kubernetes", jenkins: "Jenkins", github_actions: "GitHub Actions", aws: "AWS", azure: "Azure", gcp: "GCP", servicenow: "ServiceNow", slack: "Slack", teams: "Microsoft Teams", incident: "Incident timeline", server: "Server" };
   const ENV = {
-    kubernetes: { KUBECONFIG: "/Users/you/.kube/config" },
-    jenkins: { JENKINS_URL: "https://jenkins.example.com", JENKINS_USER: "your-username", JENKINS_TOKEN: "your-api-token" },
-    github_actions: { GITHUB_TOKEN: "your-github-token" },
-    aws: { AWS_REGION: "us-west-2", AWS_PROFILE: "default" },
-    azure: { AZURE_TENANT_ID: "", AZURE_CLIENT_ID: "", AZURE_CLIENT_SECRET: "", AZURE_SUBSCRIPTION_ID: "" },
-    gcp: { GOOGLE_APPLICATION_CREDENTIALS: "/path/to/service-account.json", GCP_PROJECT_ID: "your-project" },
-    servicenow: { SNOW_INSTANCE: "yourcompany.service-now.com", SNOW_USER: "your-username", SNOW_PASSWORD: "your-password" },
-    slack: { SLACK_BOT_TOKEN: "your-bot-token" },
-    teams: { TEAMS_WEBHOOK_URL: "https://example.invalid/your-webhook", TEAMS_TENANT_ID: "", TEAMS_CLIENT_ID: "", TEAMS_CLIENT_SECRET: "" },
+    kubernetes: [],
+    jenkins: ["JENKINS_URL=https://jenkins.example.com", "JENKINS_USER=your-username", "JENKINS_TOKEN=your-api-token"],
+    github_actions: ["GITHUB_TOKEN=your-github-token"],
+    aws: ["AWS_REGION=us-west-2", "AWS_PROFILE=default"],
+    azure: ["AZURE_TENANT_ID=", "AZURE_CLIENT_ID=", "AZURE_CLIENT_SECRET=", "AZURE_SUBSCRIPTION_ID="],
+    gcp: ["GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json", "GCP_PROJECT_ID=your-project"],
+    servicenow: ["SNOW_INSTANCE=yourcompany.service-now.com", "SNOW_USER=your-username", "SNOW_PASSWORD=your-password"],
+    slack: ["SLACK_BOT_TOKEN=your-bot-token"],
+    teams: ["TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/your-webhook", "TEAMS_TENANT_ID=", "TEAMS_CLIENT_ID=", "TEAMS_CLIENT_SECRET="],
   };
   const WRITES = new Set(["slack_post_message", "teams_post_message"]);
   const picked = new Set(["kubernetes", "jenkins"]);
-  $("svc").innerHTML = Object.keys(LABEL).map((k) => `<label><input type="checkbox" value="${k}" ${picked.has(k) ? "checked" : ""}> ${LABEL[k]}</label>`).join("");
-  function cfg() {
-    const env = {}; picked.forEach((k) => Object.assign(env, ENV[k]));
-    $("cfg").textContent = JSON.stringify({ mcpServers: { "devops-mcp": { command: "devops-mcp", env } } }, null, 2);
+  $("svc").innerHTML = Object.keys(LABEL).filter((k) => ENV[k]).map((k) => `<label><input type="checkbox" value="${k}" ${picked.has(k) ? "checked" : ""}> ${LABEL[k]}</label>`).join("");
+  function render() {
+    const lines = [];
+    Object.keys(ENV).filter((k) => picked.has(k)).forEach((k) => {
+      lines.push("# " + LABEL[k]);
+      lines.push(...(ENV[k].length ? ENV[k] : ["# Reads ~/.kube/config. Set KUBECONFIG only for another path."]), "");
+    });
+    $("env").textContent = lines.length ? lines.join("\n").trimEnd() : "# Pick at least one service.";
+    $("cfg").textContent = JSON.stringify({ mcpServers: { "devops-mcp": { command: "devops-mcp" } } }, null, 2);
   }
-  $("svc").addEventListener("change", (e) => { e.target.checked ? picked.add(e.target.value) : picked.delete(e.target.value); cfg(); track("mcp_config"); });
-  $("copy").addEventListener("click", async () => { try { await navigator.clipboard.writeText($("cfg").textContent); $("copy").textContent = "Copied"; setTimeout(() => ($("copy").textContent = "Copy"), 1500); } catch (e) { $("copy").textContent = "Select and copy"; } track("mcp_copy"); });
-  cfg();
+  $("svc").addEventListener("change", (e) => { e.target.checked ? picked.add(e.target.value) : picked.delete(e.target.value); render(); });
+  render();
+
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-copy]"); if (!b) return;
+    const el = $(b.dataset.copy), old = b.textContent;
+    try { await navigator.clipboard.writeText(el.textContent); b.textContent = "Copied"; }
+    catch (err) { const r = document.createRange(); r.selectNodeContents(el); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); b.textContent = "Selected, press copy"; }
+    setTimeout(() => (b.textContent = old), 1800);
+  });
 
   let tools = [], svc = "all";
   function draw() {
     const q = $("q").value.trim().toLowerCase();
     const list = tools.filter((t) => (svc === "all" || t.service === svc) && (!q || (t.name + " " + t.doc + " " + t.service).toLowerCase().includes(q)));
     $("count").textContent = list.length + " of " + tools.length + " tools";
-    $("grid").innerHTML = list.length ? list.map((t) => `<div class="t"><b>${esc(t.name)}</b>${WRITES.has(t.name) ? '<span class="tag w">sends a message</span>' : '<span class="tag">read</span>'}<p>${esc(t.doc)}</p><div class="a">${t.args.map((a) => `<code>${esc(a)}</code>`).join("") || '<span class="cnt">no arguments</span>'}</div></div>`).join("") : '<div class="status">No tool matches that search.</div>';
+    $("grid").innerHTML = list.length ? list.map((t) => `<div class="t"><b>${esc(t.name)}</b>${WRITES.has(t.name) ? '<span class="tag w">sends a message, off by default</span>' : '<span class="tag">read</span>'}<p>${esc(t.doc)}</p><div class="a">${t.args.map((a) => `<code>${esc(a)}</code>`).join("") || '<span class="cnt">no arguments</span>'}</div></div>`).join("") : '<div class="status">No tool matches that search.</div>';
   }
-  fetch("tools.json").then((r) => r.json()).then((t) => {
+  fetch("tools.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((t) => {
     tools = t; $("n-tools").textContent = t.length;
     const svcs = [...new Set(t.map((x) => x.service))];
-    $("filters").innerHTML = ['<button class="chip" data-s="all" aria-pressed="true">All</button>'].concat(svcs.map((s) => `<button class="chip" data-s="${s}" aria-pressed="false">${esc(LABEL[s] || s)}</button>`)).join("");
-    $("filters").addEventListener("click", (e) => { const b = e.target.closest("[data-s]"); if (!b) return; svc = b.dataset.s; document.querySelectorAll("#filters .chip").forEach((x) => x.setAttribute("aria-pressed", x === b)); draw(); track("mcp_filter"); });
+    $("filters").innerHTML = ['<button class="chip" type="button" data-s="all" aria-pressed="true">All</button>'].concat(svcs.map((s) => `<button class="chip" type="button" data-s="${esc(s)}" aria-pressed="false">${esc(LABEL[s] || s)}</button>`)).join("");
+    $("filters").addEventListener("click", (e) => { const b = e.target.closest("[data-s]"); if (!b) return; svc = b.dataset.s; document.querySelectorAll("#filters .chip").forEach((x) => x.setAttribute("aria-pressed", x === b)); draw(); });
     draw(); window.__MCP_READY__ = true;
   }).catch(() => { $("grid").innerHTML = '<div class="status">The tool list did not load. The README has the full table.</div>'; });
   $("q").addEventListener("input", draw);
 })();
-
 </script>
 </body>
 </html>

@@ -3,7 +3,7 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: ["site/**", "src/devops_mcp/tools/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "src/devops_mcp/tools/**", "src/devops_mcp/server.py", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -27,17 +27,17 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp site/index.html _site/
-          python3 - src/devops_mcp/tools _site/tools.json <<'PY'
+          cp site/index.html site/og.png _site/
+          python3 - src/devops_mcp/tools src/devops_mcp/server.py _site/tools.json <<'PY'
           import ast, glob, json, os, sys
-          src, out = sys.argv[1], sys.argv[2]
+          src, server, out = sys.argv[1], sys.argv[2], sys.argv[3]
           tools, seen = [], set()
-          for f in sorted(glob.glob(os.path.join(src, "*.py"))):
+          for f in sorted(glob.glob(os.path.join(src, "*.py"))) + [server]:
               svc = os.path.basename(f)[:-3]
               if svc.startswith("_"):
                   continue
               for node in ast.walk(ast.parse(open(f).read())):
-                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and any("tool" in ast.dump(d) for d in node.decorator_list):
+                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and any(isinstance(d, ast.Call) and getattr(d.func, "attr", "") == "tool" for d in node.decorator_list):
                       if node.name in seen:
                           continue
                       seen.add(node.name)
@@ -46,6 +46,7 @@ jobs:
                       tools.append({"name": node.name, "service": svc, "doc": doc, "args": args})
           json.dump(tools, open(out, "w"), indent=1)
           print(len(tools), "tools")
+          assert len(tools) >= 30, "tool extraction looks wrong"
           PY
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v5
