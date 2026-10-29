@@ -2,20 +2,41 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from devops_mcp.demo import (
+    body_hash,
+    demo_tool,
+    not_configured,
+    writes_disabled,
+    writes_enabled,
+)
 
 
 def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     try:
         from slack_sdk import WebClient  # type: ignore
 
-        client = WebClient(token=os.getenv("SLACK_BOT_TOKEN", ""))
+        token = os.getenv("SLACK_BOT_TOKEN", "").strip()
+        client = WebClient(token=token)
 
         @mcp.tool()
         def slack_post_message(channel: str, text: str) -> str:
             """Post a message to a Slack channel or user (for incident alerts)."""
-            audit("slack_post_message", {"channel": channel})
+            audit(
+                "slack_post_message",
+                {
+                    "destination": channel,
+                    "body_sha256": body_hash(text),
+                    "body_chars": len(text),
+                },
+            )
+            if not token:
+                return not_configured("Slack")
+            if not writes_enabled():
+                return writes_disabled("slack_post_message")
             resp = client.chat_postMessage(channel=channel, text=text)
             return json.dumps(
                 {"ok": resp["ok"], "ts": resp["ts"], "channel": resp["channel"]}
@@ -25,7 +46,9 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         def slack_get_channel_history(channel: str, hours: int = 1) -> str:
             """Fetch recent messages from a Slack channel."""
             audit("slack_get_channel_history", {"channel": channel, "hours": hours})
-            oldest = (datetime.now(timezone.utc) - timedelta(hours=hours)).timestamp()
+            if not token:
+                return not_configured("Slack")
+            oldest = (datetime.now(UTC) - timedelta(hours=hours)).timestamp()
             resp = client.conversations_history(
                 channel=channel, oldest=str(oldest), limit=50
             )
@@ -44,6 +67,8 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
         def slack_search_messages(query: str, count: int = 10) -> str:
             """Search Slack messages across all channels (requires search:read scope)."""
             audit("slack_search_messages", {"query": query, "count": count})
+            if not token:
+                return not_configured("Slack")
             resp = client.search_messages(query=query, count=count)
             matches = resp.get("messages", {}).get("matches", [])
             return json.dumps(
@@ -63,6 +88,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     except ImportError:
 
         @mcp.tool()
+        @demo_tool("Slack", writes=True)
         def slack_post_message(  # type: ignore[misc]
             channel: str,
             text: str,
@@ -74,6 +100,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Slack")
         def slack_get_channel_history(  # type: ignore[misc]
             channel: str,
             hours: int = 1,
@@ -102,6 +129,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Slack")
         def slack_search_messages(  # type: ignore[misc]
             query: str,
             count: int = 10,

@@ -1,0 +1,56 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "src/devops_mcp/tools/**", "src/devops_mcp/server.py", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp site/index.html site/og.png _site/
+          python3 - src/devops_mcp/tools src/devops_mcp/server.py _site/tools.json <<'PY'
+          import ast, glob, json, os, sys
+          src, server, out = sys.argv[1], sys.argv[2], sys.argv[3]
+          tools, seen = [], set()
+          for f in sorted(glob.glob(os.path.join(src, "*.py"))) + [server]:
+              svc = os.path.basename(f)[:-3]
+              if svc.startswith("_"):
+                  continue
+              for node in ast.walk(ast.parse(open(f).read())):
+                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and any(isinstance(d, ast.Call) and getattr(d.func, "attr", "") == "tool" for d in node.decorator_list):
+                      if node.name in seen:
+                          continue
+                      seen.add(node.name)
+                      doc = (ast.get_docstring(node) or "").split("\n")[0]
+                      args = [a.arg for a in node.args.args if a.arg != "self"]
+                      tools.append({"name": node.name, "service": svc, "doc": doc, "args": args})
+          json.dump(tools, open(out, "w"), indent=1)
+          print(len(tools), "tools")
+          assert len(tools) >= 30, "tool extraction looks wrong"
+          PY
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v5

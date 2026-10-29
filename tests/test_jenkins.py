@@ -1,5 +1,6 @@
-import json
 import sys
+
+from tests.helpers import load
 
 
 class _FakeMCP:
@@ -31,9 +32,7 @@ def test_get_build_status_demo_returns_failure(no_audit, monkeypatch):
     mcp = _FakeMCP()
     jenkins.register(mcp, no_audit)
 
-    result = json.loads(
-        mcp.tools["jenkins_get_build_status"](job_name="backend-deploy")
-    )
+    result = load(mcp.tools["jenkins_get_build_status"](job_name="backend-deploy"))
     assert result["result"] == "FAILURE"
     assert result["duration_s"] > 0
 
@@ -56,9 +55,53 @@ def test_list_failing_jobs_demo(no_audit, monkeypatch):
     mcp = _FakeMCP()
     jenkins.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["jenkins_list_failing_jobs"]())
+    result = load(mcp.tools["jenkins_list_failing_jobs"]())
     assert isinstance(result, list)
     assert len(result) > 0
     for job in result:
         assert "name" in job
         assert "url" in job
+
+
+def test_job_path_handles_folders_and_quoting():
+    from devops_mcp.tools.jenkins import _job_path
+
+    assert _job_path("build") == "/job/build"
+    assert _job_path("team/app deploy") == "/job/team/job/app%20deploy"
+    assert _job_path("/team/app/") == "/job/team/job/app"
+
+
+def test_build_log_streams_and_keeps_only_tail(no_audit, monkeypatch):
+    import sys
+    from types import SimpleNamespace as NS
+
+    monkeypatch.setenv("JENKINS_URL", "https://j.example.com")
+    monkeypatch.setenv("JENKINS_USER", "u")
+    monkeypatch.setenv("JENKINS_TOKEN", "t")
+    sys.modules.pop("devops_mcp.tools.jenkins", None)
+    import importlib
+
+    jenkins = importlib.import_module("devops_mcp.tools.jenkins")
+    seen = {}
+
+    def fake_get(url, **kwargs):
+        seen.update(kwargs)
+        return NS(
+            raise_for_status=lambda: None,
+            iter_lines=lambda decode_unicode=True: iter(
+                f"line {i}" for i in range(100_000)
+            ),
+            close=lambda: None,
+        )
+
+    monkeypatch.setattr("requests.get", fake_get)
+    registered = {}
+
+    class M:
+        def tool(self):
+            return lambda fn: registered.setdefault(fn.__name__, fn)
+
+    jenkins.register(M(), no_audit)
+    out = registered["jenkins_get_build_log"](job_name="a/b", tail_lines=3)
+    assert out.splitlines() == ["line 99997", "line 99998", "line 99999"]
+    assert seen["stream"] is True

@@ -1,5 +1,6 @@
-import json
 import sys
+
+from tests.helpers import load
 
 
 class _FakeMCP:
@@ -28,7 +29,7 @@ def test_monitor_logs_demo_returns_events(no_audit):
     mcp = _FakeMCP()
     azure.register(mcp, no_audit)
 
-    result = json.loads(
+    result = load(
         mcp.tools["azure_get_monitor_logs"](
             workspace_id="ws-123", query="AzureActivity | limit 10"
         )
@@ -43,7 +44,7 @@ def test_get_metric_demo_returns_datapoints(no_audit):
     mcp = _FakeMCP()
     azure.register(mcp, no_audit)
 
-    result = json.loads(
+    result = load(
         mcp.tools["azure_get_metric"](
             resource_uri="/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/vm-01",
             metric_name="Percentage CPU",
@@ -59,7 +60,7 @@ def test_aks_node_status_demo_returns_pools(no_audit):
     mcp = _FakeMCP()
     azure.register(mcp, no_audit)
 
-    result = json.loads(
+    result = load(
         mcp.tools["azure_get_aks_node_status"](
             resource_group="myRG", cluster_name="prod-aks"
         )
@@ -73,7 +74,7 @@ def test_resource_health_demo_returns_available(no_audit):
     mcp = _FakeMCP()
     azure.register(mcp, no_audit)
 
-    result = json.loads(
+    result = load(
         mcp.tools["azure_get_resource_health"](
             resource_uri="/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/vm-01"
         )
