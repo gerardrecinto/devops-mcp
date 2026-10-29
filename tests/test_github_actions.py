@@ -1,7 +1,8 @@
 import importlib
-import json
 import sys
 from unittest.mock import MagicMock, patch
+
+from tests.helpers import load
 
 
 class _FakeMCP:
@@ -38,7 +39,7 @@ def test_get_workflow_run_returns_details(no_audit):
         "html_url": "https://github.com/gerardrecinto/devops-mcp/actions/runs/123",
     }
     with patch("requests.get", return_value=fake_resp):
-        result = json.loads(
+        result = load(
             mcp.tools["gh_get_workflow_run"](
                 owner="gerardrecinto", repo="devops-mcp", run_id=123
             )
@@ -67,7 +68,7 @@ def test_list_failed_runs_returns_only_failures(no_audit):
         ]
     }
     with patch("requests.get", return_value=fake_resp):
-        result = json.loads(
+        result = load(
             mcp.tools["gh_list_failed_runs"](owner="gerardrecinto", repo="devops-mcp")
         )
 
@@ -107,7 +108,7 @@ def test_demo_mode_when_requests_unavailable(no_audit, monkeypatch):
     mcp = _FakeMCP()
     gha.register(mcp, no_audit)
 
-    result = json.loads(
+    result = load(
         mcp.tools["gh_get_workflow_run"](
             owner="gerardrecinto", repo="devops-mcp", run_id=1
         )
