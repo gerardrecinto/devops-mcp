@@ -2,16 +2,21 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from devops_mcp.demo import demo_tool
 
 
 def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     try:
+        from google.cloud import (
+            container_v1,  # type: ignore
+            monitoring_v3,  # type: ignore
+            run_v2,  # type: ignore
+        )
         from google.cloud import logging as gcp_logging  # type: ignore
-        from google.cloud import monitoring_v3  # type: ignore
-        from google.cloud import container_v1  # type: ignore
-        from google.cloud import run_v2  # type: ignore
 
         default_project = os.getenv("GCP_PROJECT_ID", "")
 
@@ -25,7 +30,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             pid = project or default_project
             audit("gcp_get_logs", {"project": pid, "filter": filter_str})
             client = gcp_logging.Client(project=pid)
-            end = datetime.now(timezone.utc)
+            end = datetime.now(UTC)
             start = end - timedelta(hours=hours)
             time_filter = (
                 f'timestamp>="{start.isoformat()}" AND timestamp<="{end.isoformat()}"'
@@ -64,7 +69,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             from google.protobuf.timestamp_pb2 import Timestamp  # type: ignore
 
             client = monitoring_v3.MetricServiceClient()
-            end = datetime.now(timezone.utc)
+            end = datetime.now(UTC)
             start = end - timedelta(minutes=minutes)
             interval = monitoring_v3.TimeInterval(
                 start_time=Timestamp(seconds=int(start.timestamp())),
@@ -87,7 +92,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
                         {
                             "timestamp": str(
                                 datetime.fromtimestamp(
-                                    point.interval.end_time.seconds, tz=timezone.utc
+                                    point.interval.end_time.seconds, tz=UTC
                                 )
                             ),
                             "labels": labels,
@@ -173,6 +178,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     except ImportError:
 
         @mcp.tool()
+        @demo_tool("GCP")
         def gcp_get_logs(  # type: ignore[misc]
             filter_str: str,
             hours: int = 1,
@@ -205,6 +211,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("GCP")
         def gcp_get_metric(  # type: ignore[misc]
             metric_type: str,
             minutes: int = 60,
@@ -234,6 +241,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("GCP")
         def gcp_get_gke_cluster_status(  # type: ignore[misc]
             cluster_name: str,
             location: str,
@@ -272,6 +280,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("GCP")
         def gcp_get_cloud_run_status(  # type: ignore[misc]
             service_name: str,
             region: str,

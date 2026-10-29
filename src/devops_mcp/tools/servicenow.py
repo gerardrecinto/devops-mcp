@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import requests
+
+from devops_mcp.demo import demo_tool
 
 
 def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
@@ -15,6 +18,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     if not instance:
 
         @mcp.tool()
+        @demo_tool("ServiceNow")
         def snow_list_incidents(  # type: ignore[misc]
             state: str = "open",
             limit: int = 10,
@@ -53,6 +57,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("ServiceNow")
         def snow_get_incident(number: str) -> str:  # type: ignore[misc]
             """Get a ServiceNow incident by number. (demo mode)"""
             audit("snow_get_incident", {"number": number})
@@ -72,6 +77,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("ServiceNow")
         def snow_get_change_requests(  # type: ignore[misc]
             state: str = "scheduled",
             limit: int = 10,

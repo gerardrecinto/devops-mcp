@@ -1,5 +1,6 @@
-import json
 import sys
+
+from tests.helpers import load
 
 
 class _FakeMCP:
@@ -26,7 +27,7 @@ def test_list_incidents_demo_returns_incidents(no_audit):
     mcp = _FakeMCP()
     snow.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["snow_list_incidents"]())
+    result = load(mcp.tools["snow_list_incidents"]())
     assert isinstance(result, list)
     assert len(result) > 0
     assert result[0]["number"].startswith("INC")
@@ -37,7 +38,7 @@ def test_get_incident_demo_returns_details(no_audit):
     mcp = _FakeMCP()
     snow.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["snow_get_incident"](number="INC0045231"))
+    result = load(mcp.tools["snow_get_incident"](number="INC0045231"))
     assert result["number"] == "INC0045231"
     assert "description" in result
     assert "priority" in result
@@ -48,7 +49,7 @@ def test_get_change_requests_demo_returns_changes(no_audit):
     mcp = _FakeMCP()
     snow.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["snow_get_change_requests"]())
+    result = load(mcp.tools["snow_get_change_requests"]())
     assert isinstance(result, list)
     assert len(result) > 0
     assert result[0]["number"].startswith("CHG")
