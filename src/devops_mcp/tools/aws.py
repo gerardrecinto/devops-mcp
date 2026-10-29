@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+
+from devops_mcp.demo import demo_response
 
 
 def _aws_configured() -> bool:
@@ -104,9 +107,9 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
                 {"log_group": log_group, "log_stream": log_stream},
             )
             if not _aws_configured():
-                return json.dumps(_demo_cloudwatch_logs(), indent=2)
+                return demo_response("AWS", _demo_cloudwatch_logs())
             client = _logs()
-            end = datetime.now(timezone.utc)
+            end = datetime.now(UTC)
             start = end - timedelta(minutes=minutes)
             kwargs: dict[str, Any] = {
                 "logGroupName": log_group,
@@ -145,9 +148,9 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
                 "aws_get_metric", {"namespace": namespace, "metric_name": metric_name}
             )
             if not _aws_configured():
-                return json.dumps(_demo_metric(stat), indent=2)
+                return demo_response("AWS", _demo_metric(stat))
             client = _cw()
-            end = datetime.now(timezone.utc)
+            end = datetime.now(UTC)
             start = end - timedelta(minutes=minutes)
             dims = []
             if dimensions:
@@ -174,7 +177,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             """Describe S3 bucket: region, versioning, lifecycle rules count."""
             audit("aws_describe_s3_bucket", {"bucket_name": bucket_name})
             if not _aws_configured():
-                return json.dumps(_demo_s3_bucket(bucket_name), indent=2)
+                return demo_response("AWS", _demo_s3_bucket(bucket_name))
             client = _s3()
             location = client.get_bucket_location(Bucket=bucket_name)
             versioning = client.get_bucket_versioning(Bucket=bucket_name)
@@ -202,7 +205,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
                 "aws_get_ecs_service_status", {"cluster": cluster, "service": service}
             )
             if not _aws_configured():
-                return json.dumps(_demo_ecs_service_status(cluster, service), indent=2)
+                return demo_response("AWS", _demo_ecs_service_status(cluster, service))
             client = _ecs()
             resp = client.describe_services(cluster=cluster, services=[service])
             svc = resp["services"][0]
@@ -236,9 +239,9 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             minutes: int = 30,
             filter_pattern: str = "",
         ) -> str:
-            """Fetch CloudWatch log events. (demo mode — boto3 not installed)"""
+            """Fetch CloudWatch log events. (demo mode, boto3 not installed)"""
             audit("aws_get_cloudwatch_logs", {"log_group": log_group})
-            return json.dumps(_demo_cloudwatch_logs(), indent=2)
+            return demo_response("AWS", _demo_cloudwatch_logs())
 
         @mcp.tool()
         def aws_get_metric(  # type: ignore[misc]
@@ -252,13 +255,13 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             audit(
                 "aws_get_metric", {"namespace": namespace, "metric_name": metric_name}
             )
-            return json.dumps(_demo_metric(stat), indent=2)
+            return demo_response("AWS", _demo_metric(stat))
 
         @mcp.tool()
         def aws_describe_s3_bucket(bucket_name: str) -> str:  # type: ignore[misc]
             """Describe S3 bucket. (demo mode)"""
             audit("aws_describe_s3_bucket", {"bucket_name": bucket_name})
-            return json.dumps(_demo_s3_bucket(bucket_name), indent=2)
+            return demo_response("AWS", _demo_s3_bucket(bucket_name))
 
         @mcp.tool()
         def aws_get_ecs_service_status(cluster: str, service: str) -> str:  # type: ignore[misc]
@@ -266,4 +269,4 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             audit(
                 "aws_get_ecs_service_status", {"cluster": cluster, "service": service}
             )
-            return json.dumps(_demo_ecs_service_status(cluster, service), indent=2)
+            return demo_response("AWS", _demo_ecs_service_status(cluster, service))

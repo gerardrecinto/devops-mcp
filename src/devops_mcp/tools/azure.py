@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from devops_mcp.demo import demo_tool
 
 
 def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     try:
         from azure.identity import DefaultAzureCredential  # type: ignore
-        from azure.monitor.query import LogsQueryClient, LogsQueryStatus, MetricsQueryClient  # type: ignore
         from azure.mgmt.containerservice import ContainerServiceClient  # type: ignore
+        from azure.monitor.query import LogsQueryClient, LogsQueryStatus, MetricsQueryClient  # type: ignore
 
         subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID", "")
         credential = DefaultAzureCredential()
@@ -26,7 +29,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
                 "azure_get_monitor_logs", {"workspace_id": workspace_id, "query": query}
             )
             client = LogsQueryClient(credential)
-            end = datetime.now(timezone.utc)
+            end = datetime.now(UTC)
             start = end - timedelta(hours=hours)
             response = client.query_workspace(
                 workspace_id=workspace_id,
@@ -70,7 +73,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
                 "Count": MetricAggregationType.COUNT,
             }
             client = MetricsQueryClient(credential)
-            end = datetime.now(timezone.utc)
+            end = datetime.now(UTC)
             start = end - timedelta(minutes=minutes)
             response = client.query_resource(
                 resource_uri=resource_uri,
@@ -154,6 +157,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     except ImportError:
 
         @mcp.tool()
+        @demo_tool("Azure")
         def azure_get_monitor_logs(  # type: ignore[misc]
             workspace_id: str,
             query: str,
@@ -188,6 +192,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Azure")
         def azure_get_metric(  # type: ignore[misc]
             resource_uri: str,
             metric_name: str,
@@ -209,6 +214,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Azure")
         def azure_get_aks_node_status(resource_group: str, cluster_name: str) -> str:  # type: ignore[misc]
             """Get AKS cluster node status. (demo mode)"""
             audit(
@@ -244,6 +250,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("Azure")
         def azure_get_resource_health(resource_uri: str) -> str:  # type: ignore[misc]
             """Get Azure Resource Health status. (demo mode)"""
             audit("azure_get_resource_health", {"resource_uri": resource_uri})

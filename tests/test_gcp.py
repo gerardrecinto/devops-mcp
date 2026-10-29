@@ -1,5 +1,6 @@
-import json
 import sys
+
+from tests.helpers import load
 
 
 class _FakeMCP:
@@ -28,7 +29,7 @@ def test_get_logs_demo_returns_entries(no_audit):
     mcp = _FakeMCP()
     gcp.register(mcp, no_audit)
 
-    result = json.loads(mcp.tools["gcp_get_logs"](filter_str='severity="ERROR"'))
+    result = load(mcp.tools["gcp_get_logs"](filter_str='severity="ERROR"'))
     assert isinstance(result, list)
     assert len(result) > 0
     assert "ERROR" in [e["severity"] for e in result]
@@ -39,7 +40,7 @@ def test_get_metric_demo_returns_points(no_audit):
     mcp = _FakeMCP()
     gcp.register(mcp, no_audit)
 
-    result = json.loads(
+    result = load(
         mcp.tools["gcp_get_metric"](
             metric_type="compute.googleapis.com/instance/cpu/utilization"
         )
@@ -54,7 +55,7 @@ def test_gke_status_demo_returns_running(no_audit):
     mcp = _FakeMCP()
     gcp.register(mcp, no_audit)
 
-    result = json.loads(
+    result = load(
         mcp.tools["gcp_get_gke_cluster_status"](
             cluster_name="prod-cluster", location="us-central1"
         )
@@ -68,7 +69,7 @@ def test_cloud_run_demo_returns_uri(no_audit):
     mcp = _FakeMCP()
     gcp.register(mcp, no_audit)
 
-    result = json.loads(
+    result = load(
         mcp.tools["gcp_get_cloud_run_status"](
             service_name="api-service", region="us-central1"
         )

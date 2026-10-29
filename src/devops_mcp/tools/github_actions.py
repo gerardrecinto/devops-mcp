@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
+
+from devops_mcp.demo import demo_tool
 
 _GH_API = "https://api.github.com"
 
@@ -88,8 +91,9 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
     except ImportError:
 
         @mcp.tool()
+        @demo_tool("GitHub Actions")
         def gh_get_workflow_run(owner: str, repo: str, run_id: int) -> str:  # type: ignore[misc]
-            """Get GitHub Actions workflow run details. (demo mode — requests not installed)"""
+            """Get GitHub Actions workflow run details. (demo mode, requests not installed)"""
             audit(
                 "gh_get_workflow_run", {"owner": owner, "repo": repo, "run_id": run_id}
             )
@@ -108,6 +112,7 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             )
 
         @mcp.tool()
+        @demo_tool("GitHub Actions")
         def gh_list_failed_runs(owner: str, repo: str, workflow_id: str = "", limit: int = 10) -> str:  # type: ignore[misc]
             """List failed GitHub Actions runs. (demo mode)"""
             audit(
