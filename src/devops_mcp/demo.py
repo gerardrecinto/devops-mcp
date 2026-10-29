@@ -7,6 +7,7 @@ error. With it, the sample data is labelled so an assistant does not report it a
 from __future__ import annotations
 
 import functools
+import hashlib
 import json
 import os
 from collections.abc import Callable
@@ -17,10 +18,38 @@ def demo_enabled() -> bool:
     return os.getenv("DEVOPS_MCP_DEMO", "").strip().lower() in ("1", "true", "yes")
 
 
+def writes_enabled() -> bool:
+    """Tools that send messages stay off unless the operator opts in."""
+    return os.getenv("DEVOPS_MCP_ENABLE_WRITES", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def writes_disabled(tool: str) -> str:
+    return error_response(
+        "writes_disabled",
+        f"{tool} sends data to an external system and writes are turned off.",
+        "Set DEVOPS_MCP_ENABLE_WRITES=1 in the server environment to allow it.",
+    )
+
+
+def error_response(error: str, message: str, hint: str = "") -> str:
+    """The error shape every tool uses: {"error", "message", "hint"}."""
+    return json.dumps({"error": error, "message": message, "hint": hint})
+
+
+def body_hash(body: str) -> str:
+    """Audit entries record this instead of the message body."""
+    return hashlib.sha256(body.encode()).hexdigest()
+
+
 def not_configured(service: str) -> str:
     return json.dumps(
         {
-            "error": f"{service} is not configured, so nothing was queried or sent.",
+            "error": "not_configured",
+            "message": f"{service} is not configured, so nothing was queried or sent.",
             "hint": "Set the credentials in .env, or set DEVOPS_MCP_DEMO=1 to try sample data.",
         }
     )

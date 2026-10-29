@@ -80,3 +80,51 @@ def test_main_registers_incident_timeline(tmp_path, monkeypatch):
     names = {t.name for t in asyncio.run(server.mcp.list_tools())}
     assert "incident_timeline" in names
     assert "k8s_get_failing_pods" in names
+
+
+def test_tool_exception_becomes_error_object():
+    from devops_mcp import server
+
+    def boom() -> str:
+        raise RuntimeError("upstream said no")
+
+    out = json.loads(server._guard(boom)())
+    assert out["error"] == "RuntimeError"
+    assert out["message"] == "upstream said no"
+    assert out["hint"]
+
+
+def test_registered_tools_are_guarded(tmp_path, monkeypatch):
+    from devops_mcp import server
+
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(server.mcp, "run", lambda: None)
+    seen = {}
+    real = server._ToolTap.__init__
+
+    def spy(self, mcp, tools):
+        real(self, mcp, tools)
+        seen["tools"] = tools
+
+    monkeypatch.setattr(server._ToolTap, "__init__", spy)
+    server.main()
+    assert seen["tools"]
+    assert all(hasattr(fn, "__wrapped__") for fn in seen["tools"].values())
+
+
+def test_health_tool_reports_modules(tmp_path, monkeypatch):
+    from devops_mcp import server
+
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(server.mcp, "run", lambda: None)
+    monkeypatch.setenv("JENKINS_URL", "https://j.example.com")
+    monkeypatch.delenv("SLACK_BOT_TOKEN", raising=False)
+    server.main()
+    import asyncio
+
+    result = asyncio.run(server.mcp.call_tool("devops_mcp_health", {}))
+    text = next(c.text for c in result.content if hasattr(c, "text"))
+    body = json.loads(text)
+    assert "jenkins" in body["configured"]
+    assert "slack" in body["not_configured"]
+    assert body["writes_enabled"] is False

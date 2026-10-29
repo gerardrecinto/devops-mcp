@@ -73,7 +73,7 @@ def _rows(raw: str) -> tuple[list[dict[str, Any]] | None, str]:
     if isinstance(body, dict) and body.get("demo"):
         return None, "demo data excluded"
     if isinstance(body, dict) and "error" in body:
-        return None, str(body["error"])[:120]
+        return None, str(body.get("message") or body["error"])[:120]
     if isinstance(body, dict):
         return [body], ""
     return (body, "") if isinstance(body, list) else (None, "unexpected output shape")

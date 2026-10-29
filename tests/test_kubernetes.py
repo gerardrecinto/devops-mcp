@@ -174,6 +174,22 @@ def test_pod_logs_returns_string(monkeypatch, no_audit):
     assert "ERROR" in result
 
 
+def test_pod_logs_marked_when_truncated(monkeypatch, no_audit):
+    big = "x" * (256 * 1024)
+    mcp = _register_configured(monkeypatch, no_audit, core_api=_FakeCoreApi(log=big))
+
+    result = mcp.tools["k8s_pod_logs"](pod_name="p", namespace="production")
+    assert result.endswith("[truncated: output capped at 256 KiB]")
+
+
+def test_pod_logs_not_marked_when_small(monkeypatch, no_audit):
+    mcp = _register_configured(
+        monkeypatch, no_audit, core_api=_FakeCoreApi(log="one line\n")
+    )
+    result = mcp.tools["k8s_pod_logs"](pod_name="p", namespace="production")
+    assert "truncated" not in result
+
+
 def test_describe_pod_has_required_keys(monkeypatch, no_audit):
     pods = [_make_pod("api-server-7d9f8b-xk2pq", "production", "CrashLoopBackOff", 14)]
     mcp = _register_configured(monkeypatch, no_audit, core_api=_FakeCoreApi(pods=pods))

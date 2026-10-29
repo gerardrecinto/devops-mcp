@@ -11,6 +11,16 @@ from devops_mcp.demo import demo_response
 _SERVICE_ACCOUNT_TOKEN = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
 
 
+_LOG_LIMIT_BYTES = 256 * 1024
+
+
+def _mark_truncated(text: str) -> str:
+    """The API stops at the byte limit; say so instead of returning a silent cut."""
+    if len(text.encode()) < _LOG_LIMIT_BYTES:
+        return text
+    return text + f"\n[truncated: output capped at {_LOG_LIMIT_BYTES // 1024} KiB]"
+
+
 def _kube_configured() -> bool:
     """Whether we have any plausible way to reach a cluster.
 
@@ -199,12 +209,13 @@ def register(mcp: Any, audit: Callable[[str, dict], None]) -> None:
             if not _kube_configured():
                 return demo_response("Kubernetes", _demo_pod_logs())
             v1 = _core()
-            return v1.read_namespaced_pod_log(
+            text = v1.read_namespaced_pod_log(
                 name=pod_name,
                 namespace=namespace,
                 tail_lines=min(max(tail_lines, 1), 1000),
-                limit_bytes=256 * 1024,
+                limit_bytes=_LOG_LIMIT_BYTES,
             )
+            return _mark_truncated(text)
 
         @mcp.tool()
         def k8s_describe_pod(pod_name: str, namespace: str = "default") -> str:

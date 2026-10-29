@@ -62,6 +62,7 @@ def test_list_channels_demo_returns_channels(no_audit):
 
 
 def test_post_message_rejects_non_microsoft_webhook(no_audit, monkeypatch):
+    monkeypatch.setenv("DEVOPS_MCP_ENABLE_WRITES", "1")
     monkeypatch.setenv("TEAMS_WEBHOOK_URL", "https://contoso.webhook.office.com/x")
     teams = _fresh_teams()
     mcp = _FakeMCP()
@@ -86,3 +87,65 @@ def test_allowed_webhook_hosts():
     assert teams._allowed_webhook("https://contoso.webhook.office.com/webhookb2/x")
     assert teams._allowed_webhook("https://prod-1.westus.logic.azure.com/workflows/x")
     assert not teams._allowed_webhook("https://169.254.169.254/latest")
+
+
+class _Resp:
+    status_code = 200
+
+    def raise_for_status(self):
+        pass
+
+
+def _live_teams(monkeypatch, allowlist=None, writes=True):
+    monkeypatch.setenv(
+        "TEAMS_WEBHOOK_URL", "https://contoso.webhook.office.com/x/secret"
+    )
+    if writes:
+        monkeypatch.setenv("DEVOPS_MCP_ENABLE_WRITES", "1")
+    else:
+        monkeypatch.delenv("DEVOPS_MCP_ENABLE_WRITES", raising=False)
+    if allowlist:
+        monkeypatch.setenv("DEVOPS_MCP_TEAMS_WEBHOOK_ALLOWLIST", allowlist)
+    else:
+        monkeypatch.delenv("DEVOPS_MCP_TEAMS_WEBHOOK_ALLOWLIST", raising=False)
+    teams = _fresh_teams()
+    posted = []
+    monkeypatch.setattr(
+        teams._requests, "post", lambda url, **k: posted.append(url) or _Resp()
+    )
+    audited = []
+    mcp = _FakeMCP()
+    teams.register(mcp, lambda tool, params: audited.append(params))
+    return mcp, posted, audited
+
+
+def test_post_blocked_without_opt_in(monkeypatch):
+    mcp, posted, audited = _live_teams(monkeypatch, writes=False)
+    out = load(mcp.tools["teams_post_message"](title="t", text="body text"))
+    assert out["error"] == "writes_disabled"
+    assert posted == []
+    assert "body text" not in str(audited)
+
+
+def test_post_uses_default_webhook_and_audits_hash_only(monkeypatch):
+    mcp, posted, audited = _live_teams(monkeypatch)
+    out = load(mcp.tools["teams_post_message"](title="t", text="body text"))
+    assert out["ok"] is True
+    assert posted == ["https://contoso.webhook.office.com/x/secret"]
+    entry = audited[0]
+    assert entry["destination"] == "contoso.webhook.office.com"
+    assert len(entry["body_sha256"]) == 64
+    assert "body text" not in str(entry) and "secret" not in str(entry)
+
+
+def test_override_needs_allowlist(monkeypatch):
+    other = "https://other.webhook.office.com/y"
+    mcp, posted, _ = _live_teams(monkeypatch)
+    out = load(mcp.tools["teams_post_message"](title="t", text="s", webhook_url=other))
+    assert out["error"] == "webhook_rejected"
+    assert posted == []
+
+    mcp, posted, _ = _live_teams(monkeypatch, allowlist="other.webhook.office.com")
+    out = load(mcp.tools["teams_post_message"](title="t", text="s", webhook_url=other))
+    assert out["ok"] is True
+    assert posted == [other]

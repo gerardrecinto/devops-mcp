@@ -5,7 +5,6 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-Compatible-green)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
-![Tests](https://img.shields.io/badge/Tests-65%20passed-brightgreen)
 
 ![DevOps MCP logo](docs/assets/logo.svg)
 
@@ -15,7 +14,7 @@ MCP server that connects Claude to your DevOps stack. Query Kubernetes, Jenkins,
 
 Built this after watching on-call engineers spend 25 minutes hunting across six dashboards to understand a single incident.
 
-![demo](docs/assets/demo.gif)
+![Terminal recording of Claude using devops-mcp to find failing Kubernetes pods and explain a crash loop](docs/assets/demo.gif)
 
 ## Why this exists
 
@@ -28,15 +27,17 @@ A first draft of "wrap the Kubernetes API in an MCP tool" is easy. The parts tha
 - **One timeline instead of six dashboards.** `incident_timeline` merges changes, CI failures, cluster warnings and incidents into one ordered view and names the changes that landed shortly before things broke. That cross-system join is the part a single-service wrapper does not give you.
 - **It never invents data.** An unconfigured service returns a plain "not configured" error. Sample data is opt-in (`DEVOPS_MCP_DEMO=1`) and every response is labelled, so an assistant cannot report a made-up OOMKill or a Slack message that was never sent.
 - **It finds the failures that matter.** A crash-looping pod reports phase `Running`; the reason sits on the container state. The pod check reads container waiting and terminated reasons, so CrashLoopBackOff and ImagePullBackOff are caught, not just `Pending`.
-- **Read-only by design.** No tool applies, deletes, restarts or triggers anything. The only writes are Slack and Teams messages.
-- **Prompt-injection aware.** A webhook URL supplied by the model must be an https Microsoft endpoint, so injected text in a log line cannot make the server POST channel content to an arbitrary host.
-- **A private audit trail.** Every tool call is logged as one JSON line in `~/.devops-mcp/audit.log` (mode 0600, rotated at 10 MB). Secret-like parameters are redacted, and a logging failure never breaks a tool.
-- **Bounded output.** Pod logs are capped by lines and bytes, and Jenkins console logs are streamed so a multi-hundred-MB build log cannot exhaust memory.
+- **Read-only by default.** No tool applies, deletes, restarts or triggers anything. The only writes are Slack and Teams messages, and those are refused unless the operator sets `DEVOPS_MCP_ENABLE_WRITES=1`.
+- **Prompt-injection aware.** A webhook URL supplied by the model is ignored unless its host is in `DEVOPS_MCP_TEAMS_WEBHOOK_ALLOWLIST` and is an https Microsoft endpoint, so injected text in a log line cannot make the server POST channel content to an arbitrary host.
+- **A private audit trail.** Every tool call is logged as one JSON line in `~/.devops-mcp/audit.log` (mode 0600, rotated at 10 MB). Secret-like parameters are redacted, message tools log the destination and a SHA-256 of the body instead of the body, and a logging failure never breaks a tool.
+- **Bounded output.** Pod logs are capped by lines and bytes (a cut is marked `[truncated ...]`), and Jenkins console logs are streamed so a multi-hundred-MB build log cannot exhaust memory.
 - **Partial installs work.** Each integration loads on its own; one broken module never stops the rest.
 
 ---
 
 ## What it looks like in practice
+
+Illustrative session. The pod names, incident number and timestamps are made up to show the flow; they are not output from a real system.
 
 ```
 You: "The API deployment has been stuck for 20 minutes. What's going on?"
@@ -156,9 +157,19 @@ Suspects are matched by time proximity (a change within 2 hours before the first
 ### Slack / Teams
 | Tool | What it does |
 |---|---|
-| `slack_post_message` | Post to a channel |
+| `slack_post_message` | Post to a channel (needs `DEVOPS_MCP_ENABLE_WRITES=1`) |
 | `slack_get_channel_history` | What was said in #incidents recently? |
-| `teams_post_message` | Post an alert card via webhook |
+| `slack_search_messages` | Search Slack messages across channels |
+| `teams_post_message` | Post an alert card via webhook (needs `DEVOPS_MCP_ENABLE_WRITES=1`) |
+| `teams_get_channel_messages` | Recent messages in a Teams channel (Graph API) |
+| `teams_list_channels` | Channels in a Teams team (Graph API) |
+
+### Server
+| Tool | What it answers |
+|---|---|
+| `devops_mcp_health` | Which integrations are configured, and are demo mode and writes on? |
+
+Tool failures come back as `{"error", "message", "hint"}` instead of a stack trace.
 
 ---
 
@@ -226,7 +237,7 @@ A service without credentials answers with a "not configured" error instead of g
 
 ## Security
 
-Infrastructure tools are **read-only**. Claude can observe and explain, not modify.
+Infrastructure tools are **read-only**. Claude can observe and explain, not modify. The Slack and Teams post tools are the only writes, and they are off until you set `DEVOPS_MCP_ENABLE_WRITES=1`.
 
 | Action | Available |
 |---|---|
@@ -234,9 +245,11 @@ Infrastructure tools are **read-only**. Claude can observe and explain, not modi
 | Read build logs and pipeline status | yes |
 | Read CloudWatch / Azure Monitor / Cloud Logging | yes |
 | Read ServiceNow incidents and changes | yes |
-| Post to Slack / Teams | yes |
+| Post to Slack / Teams | only with `DEVOPS_MCP_ENABLE_WRITES=1` |
 | `kubectl apply` / trigger builds / modify resources | no |
 | Create or close ServiceNow records | no |
+
+To let the model pick a Teams webhook per call, list the allowed hosts in `DEVOPS_MCP_TEAMS_WEBHOOK_ALLOWLIST` (comma-separated). Otherwise only `TEAMS_WEBHOOK_URL` is used.
 
 Credentials are environment variables only. Each service is independently optional.
 Every tool call is appended to `~/.devops-mcp/audit.log` with secret-like parameters redacted.
