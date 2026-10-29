@@ -167,3 +167,80 @@ def test_check_flag_prints_status(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "devops-mcp is installed" in out
     assert "Next:" in out
+
+
+def test_init_audit_repairs_existing_permissions(tmp_path, monkeypatch):
+    import stat
+
+    from devops_mcp import server
+
+    directory = tmp_path / ".devops-mcp"
+    directory.mkdir(mode=0o755)
+    log = directory / "audit.log"
+    log.write_text("existing record\n")
+    log.chmod(0o644)
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    server._init_audit()
+    assert server._audit_path == log
+    assert stat.S_IMODE(directory.stat().st_mode) == 0o700
+    assert stat.S_IMODE(log.stat().st_mode) == 0o600
+    assert log.read_text() == "existing record\n"
+
+
+def test_init_audit_failure_disables_logging_without_raising(
+    tmp_path, monkeypatch, caplog
+):
+    from devops_mcp import server
+
+    (tmp_path / ".devops-mcp").write_text("not a directory")
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(server, "_audit_path", tmp_path / "previous.log")
+    server._init_audit()
+    assert server._audit_path is None
+    assert "audit logging is unavailable" in caplog.text
+    server._audit("still usable", {})
+
+
+def test_init_audit_rejects_symlink_directory(tmp_path, monkeypatch):
+    from devops_mcp import server
+
+    target = tmp_path / "shared"
+    target.mkdir()
+    (tmp_path / ".devops-mcp").symlink_to(target, target_is_directory=True)
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    server._init_audit()
+    assert server._audit_path is None
+    assert not (target / "audit.log").exists()
+
+
+def test_init_audit_does_not_follow_log_symlink(tmp_path, monkeypatch):
+    import pytest
+
+    from devops_mcp import server
+
+    if not hasattr(os, "O_NOFOLLOW"):
+        pytest.skip("O_NOFOLLOW is a POSIX control")
+    directory = tmp_path / ".devops-mcp"
+    directory.mkdir()
+    target = tmp_path / "other.txt"
+    target.write_text("do not change")
+    (directory / "audit.log").symlink_to(target)
+    monkeypatch.setattr(server.Path, "home", lambda: tmp_path)
+    server._init_audit()
+    assert server._audit_path is None
+    assert target.read_text() == "do not change"
+
+
+def test_check_distinguishes_configuration_from_connectivity(monkeypatch, capsys):
+    import sys
+
+    from devops_mcp import server
+
+    monkeypatch.setenv("JENKINS_URL", "https://unreachable.invalid")
+    monkeypatch.setattr(sys, "argv", ["devops-mcp", "--check"])
+    server.main()
+    output = capsys.readouterr().out
+    assert "Configured locally:" in output
+    assert "jenkins" in output
+    assert "API connectivity and credentials have not been tested." in output
+    assert "Connected:" not in output

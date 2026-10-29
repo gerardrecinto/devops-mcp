@@ -40,3 +40,30 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Dependency vulnerability scan
         run: pip-audit --skip-editable
+
+  install-smoke:
+    name: Fresh package install (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.11'
+      - name: Install the distributable package
+        run: python -m pip install .
+      - name: Start both installed entry points outside the checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_dir="$(mktemp -d)"
+          cd "$install_dir"
+          devops-mcp --version
+          mcp-devops --version
+          devops-mcp --check > check.txt
+          grep -F 'Configured locally:' check.txt
+          grep -F 'API connectivity and credentials have not been tested.' check.txt

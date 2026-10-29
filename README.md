@@ -10,7 +10,7 @@ It is an MCP server. MCP (Model Context Protocol) is the way Claude Code and Cla
 
 ## Try it in 60 seconds
 
-You need Python 3.11 or later and [pipx](https://pipx.pypa.io).
+You need Python 3.11 or later, [pipx](https://pipx.pypa.io) on your PATH, and [Claude Code](https://code.claude.com/docs/en/setup) installed to register the server.
 
 ```bash
 pipx install "git+https://github.com/gerardrecinto/devops-mcp.git"
@@ -18,7 +18,7 @@ claude mcp add devops-mcp -- devops-mcp
 devops-mcp --check
 ```
 
-`--check` prints what is connected and what to do next. Then ask Claude:
+`--check` prints which services have local configuration and what to do next. It does not make network requests or verify credentials. Then ask Claude:
 
 > Which pods are failing in my cluster?
 
@@ -51,7 +51,7 @@ Claude:
 
 ## Connect more systems
 
-Copy `.env.example` to `~/.devops-mcp/.env` and fill in only the services you use. The server reads that file on start, then restart your client. Run `devops-mcp --check` again to confirm.
+Copy `.env.example` to `~/.devops-mcp/.env` and fill in only the services you use. The server reads that file on start, then restart your client. Run `devops-mcp --check` again to check that the configuration is present. An actual tool call verifies access.
 
 Azure, GCP and Slack need extra packages:
 
@@ -86,7 +86,7 @@ claude mcp add devops-mcp -e DEVOPS_MCP_DEMO=1 -- devops-mcp
 
 - It is read-only by default. Read-only means no tool applies, deletes, restarts or triggers anything.
 - The only writes are Slack and Teams messages, and they are refused unless you set `DEVOPS_MCP_ENABLE_WRITES=1`.
-- Every tool call is logged to `~/.devops-mcp/audit.log`, with secret-like values redacted.
+- Tool calls are logged to `~/.devops-mcp/audit.log` when audit storage is available, with secret-like values redacted. Audit failures produce a warning and leave the server usable.
 - It reports what the APIs return. Claude's explanation of a root cause is a hypothesis to check, not a verdict.
 - It does not create or close ServiceNow records, run `kubectl apply`, or start builds.
 
@@ -216,7 +216,7 @@ A first draft of "wrap the Kubernetes API in an MCP tool" is easy. The parts tha
 - **It finds the failures that matter.** A crash-looping pod reports phase `Running`; the reason sits on the container state. The pod check reads container waiting and terminated reasons, so CrashLoopBackOff and ImagePullBackOff are caught, not just `Pending`.
 - **Read-only by default.** No tool applies, deletes, restarts or triggers anything. The only writes are Slack and Teams messages, and those are refused unless the operator sets `DEVOPS_MCP_ENABLE_WRITES=1`.
 - **Prompt-injection aware.** A webhook URL supplied by the model is ignored unless its host is in `DEVOPS_MCP_TEAMS_WEBHOOK_ALLOWLIST` and is an https Microsoft endpoint, so injected text in a log line cannot make the server POST channel content to an arbitrary host.
-- **A private audit trail.** Every tool call is logged as one JSON line in `~/.devops-mcp/audit.log` (mode 0600, rotated at 10 MB). Secret-like parameters are redacted, message tools log the destination and a SHA-256 of the body instead of the body, and a logging failure never breaks a tool.
+- **A private audit trail.** When audit storage is available, each tool call is logged as one JSON line in `~/.devops-mcp/audit.log` (mode 0600, rotated at 10 MB). Secret-like parameters are redacted, message tools log the destination and a SHA-256 of the body instead of the body, and an audit initialization or write failure is logged without stopping the server.
 - **Bounded output.** Pod logs are capped by lines and bytes (a cut is marked `[truncated ...]`), and Jenkins console logs are streamed so a multi-hundred-MB build log cannot exhaust memory.
 - **Partial installs work.** Each integration loads on its own; one broken module never stops the rest.
 
@@ -224,8 +224,6 @@ A first draft of "wrap the Kubernetes API in an MCP tool" is easy. The parts tha
 
 <details>
 <summary>Architecture</summary>
-
-> See [docs/architecture.md](docs/architecture.md) for the full protocol flow, tool registration, and audit logging diagrams.
 
 > See [docs/architecture.md](docs/architecture.md) for the full protocol flow, tool registration, and audit logging diagrams.
 
@@ -280,7 +278,7 @@ Infrastructure tools are **read-only**. Claude can observe and explain, not modi
 To let the model pick a Teams webhook per call, list the allowed hosts in `DEVOPS_MCP_TEAMS_WEBHOOK_ALLOWLIST` (comma-separated). Otherwise only `TEAMS_WEBHOOK_URL` is used.
 
 Credentials are environment variables only. Each service is independently optional.
-Every tool call is appended to `~/.devops-mcp/audit.log` with secret-like parameters redacted.
+When audit storage is available, tool calls are appended to `~/.devops-mcp/audit.log` with secret-like parameters redacted.
 
 For the commercial path, launch angles, and first-customer profile, see [docs/go-to-market.md](docs/go-to-market.md).
 

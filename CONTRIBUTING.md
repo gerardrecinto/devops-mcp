@@ -7,7 +7,7 @@ Needs Python 3.11 or newer.
 ```bash
 git clone https://github.com/gerardrecinto/devops-mcp.git
 cd devops-mcp
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
