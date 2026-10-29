@@ -310,3 +310,5 @@ For the commercial path and first-customer profile, see [docs/go-to-market.md](d
 ## License
 
 MIT
+
+Optional paid help: [scoped reviews and setup](SUPPORT.md).
