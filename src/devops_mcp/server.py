@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
+import os
 import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -11,6 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+from devops_mcp.demo import demo_enabled, error_response, writes_enabled
 
 try:
     # mcp SDK 2.x renamed FastMCP -> MCPServer and moved the module.
@@ -73,6 +77,55 @@ def _audit(tool: str, params: dict[str, Any]) -> None:
         logger.warning("audit log write failed: %s", exc)
 
 
+# Environment variables that mean a module has something to talk to. Any one is enough.
+_CONFIG_ENV: dict[str, tuple[str, ...]] = {
+    "kubernetes": ("KUBECONFIG", "KUBERNETES_SERVICE_HOST"),
+    "jenkins": ("JENKINS_URL",),
+    "github_actions": ("GITHUB_TOKEN",),
+    "aws": ("AWS_ACCESS_KEY_ID", "AWS_PROFILE", "AWS_ROLE_ARN"),
+    "azure": ("AZURE_SUBSCRIPTION_ID",),
+    "gcp": ("GCP_PROJECT_ID", "GOOGLE_APPLICATION_CREDENTIALS"),
+    "servicenow": ("SNOW_INSTANCE",),
+    "slack": ("SLACK_BOT_TOKEN",),
+    "teams": ("TEAMS_WEBHOOK_URL", "TEAMS_TENANT_ID"),
+}
+
+
+def _is_configured(module: str) -> bool:
+    if any(os.getenv(k) for k in _CONFIG_ENV.get(module, ())):
+        return True
+    # Kubernetes and AWS also read credentials from files in the home directory.
+    home_files = {
+        "kubernetes": Path.home() / ".kube" / "config",
+        "aws": Path.home() / ".aws" / "credentials",
+    }
+    path = home_files.get(module)
+    return bool(path and path.exists())
+
+
+def _guard(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Turn an exception inside a tool into {"error","message","hint"}.
+
+    The model gets something it can read and the server never leaks a traceback.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "tool %s failed: %s: %s", fn.__name__, type(exc).__name__, exc
+            )
+            return error_response(
+                type(exc).__name__,
+                str(exc)[:300] or "The call failed with no message.",
+                "Check the service credentials and the parameters, then retry.",
+            )
+
+    return wrapper
+
+
 class _ToolTap:
     """Passes tool registration through while remembering each tool by name,
     so the incident timeline can call the other modules' tools."""
@@ -87,13 +140,32 @@ class _ToolTap:
         register = self._mcp.tool(*args, **kwargs)
 
         def decorator(fn: Callable[..., str]) -> Callable[..., str]:
-            self._tools[fn.__name__] = fn
-            return register(fn)
+            guarded = _guard(fn)
+            self._tools[fn.__name__] = guarded
+            return register(guarded)
 
         return decorator
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._mcp, name)
+
+
+def _register_health(mcp: Any) -> None:
+    @mcp.tool()
+    def devops_mcp_health() -> str:
+        """Which integrations are configured, and whether sample data and writes are on."""
+        _audit("devops_mcp_health", {})
+        return json.dumps(
+            {
+                "configured": sorted(m for m in _CONFIG_ENV if _is_configured(m)),
+                "not_configured": sorted(
+                    m for m in _CONFIG_ENV if not _is_configured(m)
+                ),
+                "demo_mode": demo_enabled(),
+                "writes_enabled": writes_enabled(),
+            },
+            indent=2,
+        )
 
 
 def main() -> None:
@@ -149,8 +221,22 @@ def main() -> None:
     except PackageNotFoundError:
         _version = "dev"
 
+    try:
+        _register_health(mcp)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("health tool failed to load: %s", exc)
+
+    configured = [m for m in registered if _is_configured(m)]
+    unconfigured = [m for m in registered if m in _CONFIG_ENV and m not in configured]
     logger.info(
         "devops-mcp v%s started, registered: %s", _version, ", ".join(registered)
+    )
+    logger.info(
+        "configured: %s | not configured: %s | demo=%s writes=%s",
+        ", ".join(configured) or "none",
+        ", ".join(unconfigured) or "none",
+        demo_enabled(),
+        writes_enabled(),
     )
     mcp.run()
 
