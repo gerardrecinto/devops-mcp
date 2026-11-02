@@ -1,0 +1,15 @@
+name: deploy-demo
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-approval:
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      environment: release-approval
+    permissions:
+      contents: read

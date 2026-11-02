@@ -65,6 +65,13 @@ To see the output shape before connecting anything, add the demo flag. Every res
 claude mcp add devops-mcp -e DEVOPS_MCP_DEMO=1 -- devops-mcp
 ```
 
+## Tracing and SLO helpers (optional)
+
+Two small add-ons that the server does not turn on by itself.
+
+- `devops_mcp.tracing`: OpenTelemetry spans around a tool call. Install with `pip install "mcp-devops[otel]"`, call `configure_tracing()`, then wrap a function with `@traced("tool_name")`. Spans record the tool name and argument names, never argument values. A sample collector config is in `docs/observability/otel-collector.yaml`.
+- `devops_mcp.slo`: multi-window burn-rate alerts (the 14.4x, 6x, 3x and 1x pattern from the Google SRE Workbook). Try it: `python -m devops_mcp.slo --slo 0.999 --window 1h=200/10000 --window 5m=20/1000`.
+
 ## Tools
 
 33 tools. The full list with arguments is in the [tool browser](https://gerardrecinto.github.io/devops-mcp/#tools), and the tables are below.
