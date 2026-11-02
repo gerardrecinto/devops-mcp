@@ -58,4 +58,5 @@ jobs:
       - name: Record the deployment
         env:
           TARGET: ${{ inputs.environment }}
-        run: echo "Demo deploy to $TARGET: wheel verified, nothing is published." >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Demo deploy to $TARGET. Wheel verified, nothing is published." >> "$GITHUB_STEP_SUMMARY"
