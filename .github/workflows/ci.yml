@@ -12,16 +12,16 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ./.github/actions/python-env
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install
-        run: pip install -e ".[dev]"
+          extras: dev,otel
       - name: Lint (ruff)
         run: ruff check src/ tests/
       - name: Format check (black)
@@ -31,13 +31,12 @@ jobs:
 
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ./.github/actions/python-env
         with:
-          python-version: "3.12"
-      - name: Install
-        run: pip install -e ".[dev]"
+          extras: dev,otel
       - name: Dependency vulnerability scan
         run: pip-audit --skip-editable
 

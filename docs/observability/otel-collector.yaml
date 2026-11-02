@@ -1,0 +1,28 @@
+# Minimal OpenTelemetry Collector config for devops-mcp spans.
+# Receives OTLP over HTTP and gRPC, limits memory, batches, and prints spans.
+# Swap the debug exporter for your backend (Datadog, Tempo, Jaeger, and so on).
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  batch:
+    timeout: 1s
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug]

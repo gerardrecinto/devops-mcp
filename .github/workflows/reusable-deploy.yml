@@ -1,0 +1,62 @@
+name: reusable-deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment to deploy to (its protection rules apply)
+        required: true
+        type: string
+      python-version:
+        required: false
+        type: string
+        default: "3.12"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ./.github/actions/python-env
+        with:
+          python-version: ${{ inputs.python-version }}
+          extras: dev
+      - name: Build wheel
+        run: pip wheel . --no-deps -w dist
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: wheel
+          path: dist/*.whl
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: wheel
+          path: dist
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install the built wheel in a clean venv and import it
+        run: |
+          python -m venv /tmp/release-check
+          /tmp/release-check/bin/pip install dist/*.whl
+          /tmp/release-check/bin/python -c "import devops_mcp; print('devops_mcp imported from the built wheel')"
+      - name: Record the deployment
+        env:
+          TARGET: ${{ inputs.environment }}
+        run: |
+          echo "Demo deploy to $TARGET. Wheel verified, nothing is published." >> "$GITHUB_STEP_SUMMARY"

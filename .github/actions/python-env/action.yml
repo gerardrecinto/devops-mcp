@@ -1,0 +1,22 @@
+name: python-env
+description: Set up Python with a pip cache and install this project with the given extras.
+inputs:
+  python-version:
+    description: Python version to install
+    default: "3.12"
+  extras:
+    description: Comma separated pip extras (for example dev,otel)
+    default: dev
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+        cache-dependency-path: pyproject.toml
+    - name: Install
+      shell: bash
+      env:
+        EXTRAS: ${{ inputs.extras }}
+      run: pip install -e ".[$EXTRAS]"

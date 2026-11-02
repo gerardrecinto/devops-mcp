@@ -1,0 +1,31 @@
+name: workflow-lint
+
+on:
+  pull_request:
+    paths: [".github/**"]
+  push:
+    branches: [main]
+    paths: [".github/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workflow-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  harness-doctor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install harness-doctor at a pinned commit
+        run: pip install "harness-doctor @ git+https://github.com/gerardrecinto/harness-doctor@05abc7edb386f24e573fd34b186eee6cab284f74"
+      - name: Lint this repo's workflows
+        run: harness-doctor check .github/workflows --fail-on warning --format github
