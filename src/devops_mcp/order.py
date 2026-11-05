@@ -17,6 +17,7 @@ Config file:
 A read counts only when the tool returned real data: an error, or sample data from demo mode,
 does not count. A gated tool that cannot be checked is refused, with the reason.
 """
+
 from __future__ import annotations
 
 import functools
@@ -38,9 +39,20 @@ WRITE_TOOLS = ("slack_post_message", "teams_post_message")
 
 
 class Order:
-    def __init__(self, cfg: dict[str, Any], base: str, session: str, state_dir: str, run: Callable[..., Any] = subprocess.run):
+    def __init__(
+        self,
+        cfg: dict[str, Any],
+        base: str,
+        session: str,
+        state_dir: str,
+        run: Callable[..., Any] = subprocess.run,
+    ):
         self.workflow = cfg["workflow"]
-        self.runbooks = cfg["runbooks"] if os.path.isabs(cfg["runbooks"]) else os.path.join(base, cfg["runbooks"])
+        self.runbooks = (
+            cfg["runbooks"]
+            if os.path.isabs(cfg["runbooks"])
+            else os.path.join(base, cfg["runbooks"])
+        )
         self.record: dict[str, str] = cfg.get("record", {})
         self.gated: dict[str, str] = cfg.get("gated", {})
         self.binary = cfg.get("joltrin") or "sop-mcp-server"
@@ -49,12 +61,32 @@ class Order:
     def _gate(self, step: str) -> tuple[bool, dict[str, Any]]:
         """Ask Joltrin about one step. Returns (allowed, details)."""
         if not shutil.which(self.binary):
-            return False, {"reason": f"{self.binary} is not on PATH. It needs a Joltrin build with the gate command.", "config": True}
+            return False, {
+                "reason": f"{self.binary} is not on PATH. It needs a Joltrin build with the gate command.",
+                "config": True,
+            }
         try:
-            p = self._run([self.binary, "gate", "--json", "--state-dir", self.state_dir, self.runbooks, self.workflow, self.session, step],
-                          capture_output=True, text=True, timeout=10)
+            p = self._run(
+                [
+                    self.binary,
+                    "gate",
+                    "--json",
+                    "--state-dir",
+                    self.state_dir,
+                    self.runbooks,
+                    self.workflow,
+                    self.session,
+                    step,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
         except (OSError, subprocess.TimeoutExpired) as exc:
-            return False, {"reason": f"{self.binary} gate failed to run: {exc}", "config": True}
+            return False, {
+                "reason": f"{self.binary} gate failed to run: {exc}",
+                "config": True,
+            }
         if p.returncode == 0:
             return True, {}
         try:
@@ -63,7 +95,10 @@ class Order:
                 return False, res
         except json.JSONDecodeError:
             pass
-        return False, {"reason": f"{self.binary} gate said: {(p.stderr or p.stdout).strip()[:200]}", "config": True}
+        return False, {
+            "reason": f"{self.binary} gate said: {(p.stderr or p.stdout).strip()[:200]}",
+            "config": True,
+        }
 
     def before(self, tool: str) -> str | None:
         """None to go ahead, or an error_response string when the tool must wait."""
@@ -74,8 +109,16 @@ class Order:
         if ok:
             return None
         first = res.get("run_first") or []
-        hint = f"Read from a system first ({', '.join(first)}), then try again." if first else "Fix the order setup or ask a person."
-        return error_response("order_not_satisfied", res.get("reason", "An earlier step has not happened yet."), hint)
+        hint = (
+            f"Read from a system first ({', '.join(first)}), then try again."
+            if first
+            else "Fix the order setup or ask a person."
+        )
+        return error_response(
+            "order_not_satisfied",
+            res.get("reason", "An earlier step has not happened yet."),
+            hint,
+        )
 
     def after(self, tool: str, result: Any) -> None:
         step = self.record.get(tool)
@@ -92,7 +135,9 @@ def _is_real_data(result: Any) -> bool:
         body = json.loads(result)
     except json.JSONDecodeError:
         return True
-    return not (isinstance(body, dict) and (body.get("demo") is True or "error" in body))
+    return not (
+        isinstance(body, dict) and (body.get("demo") is True or "error" in body)
+    )
 
 
 class _Broken:
@@ -103,8 +148,11 @@ class _Broken:
 
     def before(self, tool: str) -> str | None:
         if tool in WRITE_TOOLS:
-            return error_response("order_config", f"The step order file could not be used: {self.message}.",
-                                  f"Fix the file named in {ENV}, or unset {ENV} to turn step order off.")
+            return error_response(
+                "order_config",
+                f"The step order file could not be used: {self.message}.",
+                f"Fix the file named in {ENV}, or unset {ENV} to turn step order off.",
+            )
         return None
 
     def after(self, tool: str, result: Any) -> None:
@@ -129,7 +177,15 @@ def load_from_env(run: Callable[..., Any] = subprocess.run) -> Order | _Broken |
                 raise TypeError(f"{field!r} must map tool names to step names")
     except (OSError, ValueError, TypeError) as exc:
         return _Broken(str(exc))
-    session = re.sub(r"[^A-Za-z0-9._-]", "_", os.getenv("DEVOPS_MCP_ORDER_SESSION", "") or f"devops-mcp-{uuid.uuid4().hex[:12]}")[:128].lstrip("._-") or "devops-mcp"
+    session = (
+        re.sub(
+            r"[^A-Za-z0-9._-]",
+            "_",
+            os.getenv("DEVOPS_MCP_ORDER_SESSION", "")
+            or f"devops-mcp-{uuid.uuid4().hex[:12]}",
+        )[:128].lstrip("._-")
+        or "devops-mcp"
+    )
     state_dir = os.path.join(tempfile.gettempdir(), "devops-mcp-order")
     return Order(cfg, os.path.dirname(os.path.abspath(path)), session, state_dir, run)
 
