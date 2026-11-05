@@ -89,6 +89,25 @@ Two small add-ons that the server does not turn on by itself.
 | Slack and Teams | 6 |
 | Server health | 1 |
 
+## Optional: no announcement before a real look (with Joltrin)
+
+`slack_post_message` and `teams_post_message` can tell a whole channel something false if an assistant posts before it has looked at anything. With [Joltrin](https://joltrinhq.com) the server can refuse a post until this session has read real data from a system.
+
+It needs a Joltrin build with the `gate` command (in Joltrin's `master`, not yet in a release: `go install github.com/sharedcode/joltrin/v5/cmd/sop-mcp-server@master`). Copy `examples/order.json` and `examples/runbooks.json` next to each other, then start the server with the file named in the environment:
+
+```bash
+DEVOPS_MCP_ORDER=$PWD/examples/order.json DEVOPS_MCP_ENABLE_WRITES=1 devops-mcp
+```
+
+A post then returns `order_not_satisfied` until one of the tools listed under `record` (for example `k8s_get_failing_pods`) has returned real data in the same server session.
+
+What to know:
+- Off unless `DEVOPS_MCP_ORDER` is set. Nothing else changes.
+- Only real data counts. An error, or sample data from demo mode, does not.
+- If the file or `sop-mcp-server` cannot be used, the two post tools are refused and say why. Read tools keep working.
+- A session is one server process, or the name in `DEVOPS_MCP_ORDER_SESSION`. A long-running server keeps "already looked" until it restarts.
+- It checks that a read happened, not that its result was good news.
+
 ## What it does and does not do
 
 - It is read-only by default. Read-only means no tool applies, deletes, restarts or triggers anything.

@@ -14,6 +14,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+from devops_mcp import order
 from devops_mcp.demo import demo_enabled, error_response, writes_enabled
 
 try:
@@ -154,7 +155,7 @@ class _ToolTap:
         register = self._mcp.tool(*args, **kwargs)
 
         def decorator(fn: Callable[..., str]) -> Callable[..., str]:
-            guarded = _guard(fn)
+            guarded = _guard(order.ordered(fn))
             self._tools[fn.__name__] = guarded
             return register(guarded)
 
@@ -220,6 +221,7 @@ def main() -> None:
     if _cli_flag():
         return
     _init_audit()
+    order.init()
 
     from devops_mcp.tools import (
         aws,
