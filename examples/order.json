@@ -1,0 +1,14 @@
+{
+  "runbooks": "runbooks.json",
+  "workflow": "announce",
+  "record": {
+    "k8s_get_deployment_status": "looked_at_system",
+    "k8s_get_failing_pods": "looked_at_system",
+    "jenkins_get_build_status": "looked_at_system",
+    "aws_get_metric": "looked_at_system"
+  },
+  "gated": {
+    "slack_post_message": "announce",
+    "teams_post_message": "announce"
+  }
+}

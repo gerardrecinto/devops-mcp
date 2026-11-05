@@ -1,0 +1,13 @@
+{
+  "workflows": {
+    "announce": {
+      "steps": [
+        { "id": "looked_at_system", "establishes": ["looked"] },
+        { "id": "announce", "requires": ["looked"], "establishes": ["announced"] }
+      ],
+      "safety": [
+        { "name": "no-announcement-before-a-real-read", "forbidden": "announced", "requires": "looked" }
+      ]
+    }
+  }
+}
