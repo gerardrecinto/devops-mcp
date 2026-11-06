@@ -4,7 +4,7 @@ All notable changes are listed here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [1.4.0] - 2026-10-30
+## [1.4.0] - 2026-11-06
 
 ### Added
 - Optional step order, so a post to Slack or Teams waits for a real read of the system it reports on.
