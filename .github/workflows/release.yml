@@ -102,12 +102,26 @@ jobs:
           IMAGE: ghcr.io/${{ github.repository }}
         run: cosign sign --yes "${IMAGE}@${DIGEST}"
 
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Build the wheel and sdist, and write checksums
+        run: |
+          pip install build
+          python -m build
+          cd dist && sha256sum * > SHA256SUMS
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           tag_name: ${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
 
   pypi:
     needs: release
