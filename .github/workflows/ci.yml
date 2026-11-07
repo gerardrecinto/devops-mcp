@@ -21,7 +21,7 @@ jobs:
       - uses: ./.github/actions/python-env
         with:
           python-version: ${{ matrix.python-version }}
-          extras: dev,otel
+          extras: dev,otel,azure
       - name: Lint (ruff)
         run: ruff check src/ tests/
       - name: Format check (black)
