@@ -7,6 +7,7 @@ All notable changes are listed here, newest first. The format follows
 ## [Unreleased]
 
 ### Added
+- `devops-mcp --check --live` makes one read-only call per configured service (GitHub, GitLab, Jenkins, ServiceNow, Slack, AWS, Kubernetes) and reports OK or FAIL with the setting to fix, so credentials and network access can be tested before anyone asks Claude a question. It exits 1 when a service fails. It never posts a message and never prints a secret. Azure, GCP and Teams are not probed.
 - GitLab CI tools: `gl_get_pipeline` and `gl_list_failed_pipelines`, read-only, gitlab.com or self-hosted through `GITLAB_URL`.
 
 ## [1.4.0] - 2026-11-06
