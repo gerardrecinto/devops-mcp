@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/gerardrecinto/devops-mcp/actions/workflows/ci.yml/badge.svg) ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-devops-mcp lets Claude read from your Kubernetes, Jenkins, GitHub Actions, AWS, Azure, GCP, ServiceNow, Slack and Teams, so on-call engineers can ask one question instead of checking six dashboards.
+devops-mcp lets Claude read from your Kubernetes, Jenkins, GitHub Actions, GitLab CI, AWS, Azure, GCP, ServiceNow, Slack and Teams, so on-call engineers can ask one question instead of checking six dashboards.
 
 New here? Claude can look at your servers and build systems for you and explain what it finds, but it cannot change them.
 
@@ -74,7 +74,7 @@ Two small add-ons that the server does not turn on by itself.
 
 ## Tools
 
-33 tools. The full list with arguments is in the [tool browser](https://gerardrecinto.github.io/devops-mcp/#tools), and the tables are below.
+35 tools. The full list with arguments is in the [tool browser](https://gerardrecinto.github.io/devops-mcp/#tools), and the tables are below.
 
 | Service | Tools |
 |---|---|
@@ -82,6 +82,7 @@ Two small add-ons that the server does not turn on by itself.
 | Kubernetes | 5 |
 | Jenkins | 3 |
 | GitHub Actions | 2 |
+| GitLab CI | 2 |
 | AWS | 4 |
 | Azure | 4 |
 | GCP | 4 |
@@ -149,6 +150,12 @@ Suspects are matched by time proximity (a change within 2 hours before the first
 |---|---|
 | `gh_get_workflow_run` | Status and conclusion for a specific run |
 | `gh_list_failed_runs` | Which workflows have failed in the last 24 hours? |
+
+#### GitLab CI
+| Tool | What it answers |
+|---|---|
+| `gl_get_pipeline` | Status, ref and duration of one pipeline |
+| `gl_list_failed_pipelines` | Which pipelines failed recently? Works with gitlab.com or a self-hosted `GITLAB_URL` |
 
 #### AWS
 | Tool | What it answers |
