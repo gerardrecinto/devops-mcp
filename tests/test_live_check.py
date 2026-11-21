@@ -80,7 +80,19 @@ def test_teams_is_never_probed_and_secrets_are_not_printed(monkeypatch):
 
 def test_check_live_exits_1_on_a_failure_and_0_when_all_ok(monkeypatch, capsys):
     for k in list(live_check.os.environ):
-        if k.startswith(("JENKINS", "GITLAB", "SNOW", "SLACK", "AWS", "KUBE", "AZURE", "GCP", "TEAMS")):
+        if k.startswith(
+            (
+                "JENKINS",
+                "GITLAB",
+                "SNOW",
+                "SLACK",
+                "AWS",
+                "KUBE",
+                "AZURE",
+                "GCP",
+                "TEAMS",
+            )
+        ):
             monkeypatch.delenv(k)
     monkeypatch.setattr(server.Path, "home", lambda: server.Path("/nonexistent-home"))
     monkeypatch.setenv("GITHUB_TOKEN", "t")

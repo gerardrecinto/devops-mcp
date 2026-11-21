@@ -37,64 +37,103 @@ def _http(
     try:
         resp = requests.request(method, url, timeout=TIMEOUT, **kwargs)
     except requests.exceptions.SSLError:
-        return Result(service, "fail", f"TLS certificate for {host} is not trusted",
-                      "Point REQUESTS_CA_BUNDLE at your organization's CA bundle.")
+        return Result(
+            service,
+            "fail",
+            f"TLS certificate for {host} is not trusted",
+            "Point REQUESTS_CA_BUNDLE at your organization's CA bundle.",
+        )
     except requests.exceptions.RequestException as exc:
-        return Result(service, "fail", f"cannot reach {host} ({type(exc).__name__})",
-                      "Check outbound access, HTTPS_PROXY and the URL you set.")
+        return Result(
+            service,
+            "fail",
+            f"cannot reach {host} ({type(exc).__name__})",
+            "Check outbound access, HTTPS_PROXY and the URL you set.",
+        )
     if resp.status_code in (401, 403):
-        return Result(service, "fail", f"credentials rejected (HTTP {resp.status_code})", fix_creds)
+        return Result(
+            service,
+            "fail",
+            f"credentials rejected (HTTP {resp.status_code})",
+            fix_creds,
+        )
     if resp.status_code >= 400:
-        return Result(service, "fail", f"{host} answered HTTP {resp.status_code}",
-                      "Check the URL you set and that the token has read access.")
+        return Result(
+            service,
+            "fail",
+            f"{host} answered HTTP {resp.status_code}",
+            "Check the URL you set and that the token has read access.",
+        )
     try:
         return Result(service, "ok", describe(resp))
     except Exception as exc:  # noqa: BLE001
-        return Result(service, "fail", f"{host} answered, but not with the expected reply ({type(exc).__name__})",
-                      "Check that the URL points at the service's API, not a login page.")
+        return Result(
+            service,
+            "fail",
+            f"{host} answered, but not with the expected reply ({type(exc).__name__})",
+            "Check that the URL points at the service's API, not a login page.",
+        )
 
 
 def _missing(service: str, names: list[str]) -> Result | None:
     gone = [n for n in names if not os.getenv(n)]
     if gone:
-        return Result(service, "fail", f"{', '.join(gone)} not set", f"Set {', '.join(gone)} in ~/.devops-mcp/.env and run the check again.")
+        return Result(
+            service,
+            "fail",
+            f"{', '.join(gone)} not set",
+            f"Set {', '.join(gone)} in ~/.devops-mcp/.env and run the check again.",
+        )
     return None
 
 
 def _github() -> Result:
     return _http(
-        "github_actions", "GET", "https://api.github.com/user",
+        "github_actions",
+        "GET",
+        "https://api.github.com/user",
         "Check GITHUB_TOKEN: it may be expired, or lack access to your organization (SSO authorization).",
         lambda r: f"authenticated as {r.json()['login']}",
-        headers={"Authorization": f"Bearer {os.getenv('GITHUB_TOKEN', '')}", "Accept": "application/vnd.github+json"},
+        headers={
+            "Authorization": f"Bearer {os.getenv('GITHUB_TOKEN', '')}",
+            "Accept": "application/vnd.github+json",
+        },
     )
 
 
 def _gitlab() -> Result:
     base = os.getenv("GITLAB_URL", "https://gitlab.com").rstrip("/")
     return _http(
-        "gitlab", "GET", f"{base}/api/v4/user", "Check GITLAB_TOKEN and that it has the read_api scope.",
+        "gitlab",
+        "GET",
+        f"{base}/api/v4/user",
+        "Check GITLAB_TOKEN and that it has the read_api scope.",
         lambda r: f"authenticated as {r.json()['username']}",
         headers={"PRIVATE-TOKEN": os.getenv("GITLAB_TOKEN", "")},
     )
 
 
 def _jenkins() -> Result:
-    if (m := _missing("jenkins", ["JENKINS_URL", "JENKINS_USER", "JENKINS_TOKEN"])):
+    if m := _missing("jenkins", ["JENKINS_URL", "JENKINS_USER", "JENKINS_TOKEN"]):
         return m
     url = os.environ["JENKINS_URL"].rstrip("/") + "/api/json?tree=mode"
     return _http(
-        "jenkins", "GET", url, "Check JENKINS_USER and JENKINS_TOKEN (use an API token, not a password).",
+        "jenkins",
+        "GET",
+        url,
+        "Check JENKINS_USER and JENKINS_TOKEN (use an API token, not a password).",
         lambda r: f"reachable, mode {r.json()['mode']}",
         auth=(os.environ["JENKINS_USER"], os.environ["JENKINS_TOKEN"]),
     )
 
 
 def _servicenow() -> Result:
-    if (m := _missing("servicenow", ["SNOW_INSTANCE", "SNOW_USER", "SNOW_PASSWORD"])):
+    if m := _missing("servicenow", ["SNOW_INSTANCE", "SNOW_USER", "SNOW_PASSWORD"]):
         return m
     return _http(
-        "servicenow", "GET", f"https://{os.environ['SNOW_INSTANCE']}/api/now/table/incident?sysparm_limit=1",
+        "servicenow",
+        "GET",
+        f"https://{os.environ['SNOW_INSTANCE']}/api/now/table/incident?sysparm_limit=1",
         "Check SNOW_USER and SNOW_PASSWORD, and that the account can read the incident table.",
         lambda r: f"incident table readable ({len(r.json()['result'])} row fetched)",
         auth=(os.environ["SNOW_USER"], os.environ["SNOW_PASSWORD"]),
@@ -109,7 +148,11 @@ def _slack() -> Result:
         return f"authenticated as {body.get('user', 'bot')} in {body.get('team', 'workspace')}"
 
     res = _http(
-        "slack", "POST", "https://slack.com/api/auth.test", "Check SLACK_BOT_TOKEN (it starts with xoxb-).", check,
+        "slack",
+        "POST",
+        "https://slack.com/api/auth.test",
+        "Check SLACK_BOT_TOKEN (it starts with xoxb-).",
+        check,
         headers={"Authorization": f"Bearer {os.getenv('SLACK_BOT_TOKEN', '')}"},
     )
     if res.status == "fail" and "expected reply" in res.detail:
@@ -124,13 +167,20 @@ def _aws() -> Result:
         from botocore.config import Config
 
         ident = boto3.client(
-            "sts", region_name=os.getenv("AWS_REGION") or None,
-            config=Config(connect_timeout=5, read_timeout=TIMEOUT, retries={"max_attempts": 0}),
+            "sts",
+            region_name=os.getenv("AWS_REGION") or None,
+            config=Config(
+                connect_timeout=5, read_timeout=TIMEOUT, retries={"max_attempts": 0}
+            ),
         ).get_caller_identity()
         return Result("aws", "ok", f"caller {ident['Arn']}")
     except Exception as exc:  # noqa: BLE001
-        return Result("aws", "fail", f"{type(exc).__name__}",
-                      "Check AWS_PROFILE or the access key variables, that the session has not expired, and outbound access to sts.amazonaws.com.")
+        return Result(
+            "aws",
+            "fail",
+            f"{type(exc).__name__}",
+            "Check AWS_PROFILE or the access key variables, that the session has not expired, and outbound access to sts.amazonaws.com.",
+        )
 
 
 def _kubernetes() -> Result:
@@ -144,8 +194,12 @@ def _kubernetes() -> Result:
         v = client.VersionApi().get_code(_request_timeout=TIMEOUT)
         return Result("kubernetes", "ok", f"API server {v.git_version}")
     except Exception as exc:  # noqa: BLE001
-        return Result("kubernetes", "fail", f"{type(exc).__name__}",
-                      "Check KUBECONFIG and the current context (kubectl config current-context), and that the cluster is reachable from here.")
+        return Result(
+            "kubernetes",
+            "fail",
+            f"{type(exc).__name__}",
+            "Check KUBECONFIG and the current context (kubectl config current-context), and that the cluster is reachable from here.",
+        )
 
 
 _PROBES: dict[str, Callable[[], Result]] = {
@@ -168,7 +222,11 @@ def run_live(configured: list[str]) -> list[Result]:
     out: list[Result] = []
     for name in configured:
         probe = _PROBES.get(name)
-        out.append(probe() if probe else Result(name, "skipped", _NO_PROBE.get(name, "no live probe")))
+        out.append(
+            probe()
+            if probe
+            else Result(name, "skipped", _NO_PROBE.get(name, "no live probe"))
+        )
     return out
 
 
@@ -180,5 +238,7 @@ def report(results: list[Result]) -> tuple[list[str], int]:
             lines.append(f"          fix: {r.fix}")
     failed = sum(r.status == "fail" for r in results)
     ok = sum(r.status == "ok" for r in results)
-    lines.append(f"{ok} of {len(results)} configured services answered; {failed} failed.")
+    lines.append(
+        f"{ok} of {len(results)} configured services answered; {failed} failed."
+    )
     return lines, 1 if failed else 0

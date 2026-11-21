@@ -218,7 +218,9 @@ def _cli_flag() -> bool:
             lines, live_exit = live_check.report(live_check.run_live(h["configured"]))
             print("\n".join(lines))
         else:
-            print("API connectivity and credentials have not been tested. Add --live to test them.")
+            print(
+                "API connectivity and credentials have not been tested. Add --live to test them."
+            )
         print(f"Not set up: {', '.join(h['not_configured']) or 'none'}")
         print(f"Sample data (DEVOPS_MCP_DEMO): {'on' if h['demo_mode'] else 'off'}")
         print(f"Next: {h['next_step']}")
