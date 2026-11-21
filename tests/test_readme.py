@@ -7,6 +7,7 @@ PREFIXES = (
     "k8s_",
     "jenkins_",
     "gh_",
+    "gl_",
     "aws_",
     "azure_",
     "gcp_",
