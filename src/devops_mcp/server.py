@@ -210,10 +210,20 @@ def _cli_flag() -> bool:
         h = _health()
         print("devops-mcp is installed and starts.")
         print(f"Configured locally: {', '.join(h['configured']) or 'nothing yet'}")
-        print("API connectivity and credentials have not been tested.")
+        live_exit = 0
+        if "--live" in args:
+            from devops_mcp import live_check
+
+            print("Live check (one read-only call per configured service):")
+            lines, live_exit = live_check.report(live_check.run_live(h["configured"]))
+            print("\n".join(lines))
+        else:
+            print("API connectivity and credentials have not been tested. Add --live to test them.")
         print(f"Not set up: {', '.join(h['not_configured']) or 'none'}")
         print(f"Sample data (DEVOPS_MCP_DEMO): {'on' if h['demo_mode'] else 'off'}")
         print(f"Next: {h['next_step']}")
+        if live_exit:
+            sys.exit(live_exit)
         return True
     return False
 

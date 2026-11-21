@@ -18,7 +18,7 @@ claude mcp add devops-mcp -- devops-mcp
 devops-mcp --check
 ```
 
-`--check` prints which services have local configuration and what to do next. It does not make network requests or verify credentials. Then ask Claude:
+`--check` prints which services have local configuration and what to do next. It does not make network requests or verify credentials. To test them from this machine, run `devops-mcp --check --live`: it makes one read-only call per configured service (GitHub, GitLab, Jenkins, ServiceNow, Slack, AWS and Kubernetes), says whether each answered, names the setting to fix when one does not, and exits 1 if any failed. It never posts to Slack or Teams and never prints a secret. Azure, GCP and Teams are not probed yet. Behind a proxy it honors `HTTPS_PROXY`, and `REQUESTS_CA_BUNDLE` for a corporate CA. Then ask Claude:
 
 > Which pods are failing in my cluster?
 
