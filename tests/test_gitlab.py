@@ -42,10 +42,18 @@ def test_list_failed_filters_by_status(no_audit, monkeypatch):
     gl.register(mcp, no_audit)
     resp = MagicMock()
     resp.json.return_value = [
-        {"id": 1, "ref": "main", "sha": "deadbeefcafe", "created_at": "t", "web_url": "u"}
+        {
+            "id": 1,
+            "ref": "main",
+            "sha": "deadbeefcafe",
+            "created_at": "t",
+            "web_url": "u",
+        }
     ]
     with patch("requests.get", return_value=resp) as get:
         out = load(mcp.tools["gl_list_failed_pipelines"](project="grp/app", limit=3))
     assert get.call_args.kwargs["params"] == {"status": "failed", "per_page": 3}
     assert get.call_args.kwargs["headers"] == {}
-    assert out == [{"id": 1, "ref": "main", "commit": "deadbeef", "created_at": "t", "url": "u"}]
+    assert out == [
+        {"id": 1, "ref": "main", "commit": "deadbeef", "created_at": "t", "url": "u"}
+    ]
