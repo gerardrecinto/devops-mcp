@@ -1,4 +1,4 @@
-FROM python:3.15.0-slim@sha256:f5b92f2a669a4c347044f29367f31983280b648250ca94dea66f98c53bc87e58 AS builder
+FROM python:3.15.1-slim@sha256:533b0b2f9b5d46fd097091cf826f27902f1d6c3bca714b6dc74551356aa97a51 AS builder
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ COPY src/ src/
 
 RUN pip install --no-cache-dir --prefix=/install ".[azure,gcp,slack]"
 
-FROM python:3.15.0-slim@sha256:f5b92f2a669a4c347044f29367f31983280b648250ca94dea66f98c53bc87e58
+FROM python:3.15.1-slim@sha256:533b0b2f9b5d46fd097091cf826f27902f1d6c3bca714b6dc74551356aa97a51
 
 RUN groupadd --gid 1000 devops-mcp \
     && useradd --uid 1000 --gid devops-mcp --create-home --shell /usr/sbin/nologin devops-mcp
